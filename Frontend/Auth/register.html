@@ -1,0 +1,440 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USER REGISTRATION</title>
+    <link rel="shortcut icon" href="{% static 'Logo/Logo.png' %}" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        @keyframes underlineExpand {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes progressBar {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(0%); }
+            100% { transform: translateX(100%); }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .toast { animation: slideIn 0.3s ease-out; }
+        .toast.hide { animation: slideOut 0.3s ease-out; }
+        .toast::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            animation: underlineExpand 0.3s ease-out forwards;
+        }
+        .toast.success::after {
+            background: #10b981;
+        }
+        .toast.error::after {
+            background: #ef4444;
+        }
+        .spinner-dots {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .spinner-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .spinner-dot:nth-child(1) { animation-delay: -0.32s; }
+        .spinner-dot:nth-child(2) { animation-delay: -0.16s; }
+        .input-field {
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            transform: translateY(-2px);
+        }
+        .register-container {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        .top-bar-preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(168, 85, 247, 0.1);
+            overflow: hidden;
+            z-index: 9999;
+        }
+        .top-bar-preloader-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #a855f7, #ec4899, #a855f7);
+            background-size: 200% 100%;
+            width: 40%;
+            animation: progressBar 1.5s ease-in-out infinite;
+        }
+        .top-bar-preloader.hide {
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-white">
+    <!-- Top Bar Preloader -->
+    <div id="topBarPreloader" class="top-bar-preloader">
+        <div class="top-bar-preloader-progress"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Registration Container -->
+    <div class="register-container w-full max-w-md p-8">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 mb-4">
+                <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="w-full h-full object-cover">
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">Create Account</h1>
+            <p class="text-gray-600 text-sm mt-2">Register as a new user</p>
+        </div>
+
+        <form id="registerForm">
+            {% csrf_token %}
+            
+            <!-- Full Name -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Full Name
+                    </div>
+                </label>
+                <input 
+                    type="text" 
+                    name="full_name" 
+                    id="fullNameInput"
+                    class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all text-gray-800"
+                    placeholder="John Doe"
+                    required
+                >
+            </div>
+
+            <!-- Email Address -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                        </svg>
+                        Email Address
+                    </div>
+                </label>
+                <input 
+                    type="email" 
+                    name="login_email" 
+                    id="emailInput"
+                    class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all text-gray-800"
+                    placeholder="user@example.com"
+                    required
+                >
+            </div>
+
+            <!-- Password -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Password
+                    </div>
+                </label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    id="passwordInput"
+                    class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all text-gray-800"
+                    placeholder="••••••••"
+                    minlength="6"
+                    required
+                >
+                <p class="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-medium mb-2">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Confirm Password
+                    </div>
+                </label>
+                <input 
+                    type="password" 
+                    name="confirm_password" 
+                    id="confirmPasswordInput"
+                    class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all text-gray-800"
+                    placeholder="••••••••"
+                    required
+                >
+            </div>
+
+            <!-- Register Button -->
+            <button 
+                type="submit" 
+                id="registerButton"
+                class="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 font-semibold hover:from-purple-600 hover:to-indigo-700 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+            >
+                <svg id="buttonIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <line x1="19" x2="19" y1="8" y2="14"></line>
+                    <line x1="22" x2="16" y1="11" y2="11"></line>
+                </svg>
+                <span id="buttonText">Register</span>
+            </button>
+        </form>
+
+        <!-- Login Link -->
+        <div class="mt-6 text-center">
+            <p class="text-gray-600 text-sm">
+                Already have an account? 
+                <a href="{% url 'user_login' %}" class="text-purple-600 hover:text-purple-700 font-medium hover:underline">
+                    Login here
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Hide preloader after page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                const preloader = document.getElementById('topBarPreloader');
+                preloader.classList.add('hide');
+            }, 500);
+        });
+
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const borderColor = type === 'success' ? 'border-green-500' : 'border-red-500';
+            const iconColor = type === 'success' ? '#10b981' : '#ef4444';
+            const iconPath = type === 'success' 
+                ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>'
+                : '<circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line>';
+            
+            toast.className = `toast ${type} relative bg-white border-l-4 ${borderColor} p-4 shadow-lg min-w-[300px]`;
+            
+            toast.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0">
+                        ${iconPath}
+                    </svg>
+                    <div class="flex-1">
+                        <p class="font-semibold text-gray-800">${type === 'success' ? 'Success' : 'Error'}</p>
+                        <p class="text-sm text-gray-600">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" x2="6" y1="6" y2="18"></line>
+                            <line x1="6" x2="18" y1="6" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function showPreloader() {
+            const preloader = document.getElementById('topBarPreloader');
+            preloader.classList.remove('hide');
+            preloader.style.opacity = '1';
+            preloader.style.visibility = 'visible';
+        }
+
+        function hidePreloader() {
+            const preloader = document.getElementById('topBarPreloader');
+            preloader.classList.add('hide');
+        }
+
+        // Handle form submission
+        document.getElementById('registerForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const fullName = document.getElementById('fullNameInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            const confirmPassword = document.getElementById('confirmPasswordInput').value.trim();
+            
+            // Client-side validation
+            if (!fullName) {
+                showToast('Full name is required');
+                return;
+            }
+            
+            if (!email) {
+                showToast('Email is required');
+                return;
+            }
+            
+            if (!password) {
+                showToast('Password is required');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match');
+                return;
+            }
+            
+            // Show loading state
+            const button = document.getElementById('registerButton');
+            const buttonText = document.getElementById('buttonText');
+            const buttonIcon = document.getElementById('buttonIcon');
+            
+            showPreloader();
+            
+            button.disabled = true;
+            button.classList.add('opacity-75');
+            buttonIcon.innerHTML = `
+                <div class="spinner-dots">
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                    <div class="spinner-dot"></div>
+                </div>
+            `;
+            buttonText.textContent = 'Registering...';
+            
+            // Send AJAX request
+            try {
+                const csrftoken = getCookie('csrftoken');
+                const response = await fetch("{% url 'user_register' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        full_name: fullName,
+                        login_email: email,
+                        password: password,
+                        confirm_password: confirmPassword
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Success - show success message and redirect
+                    hidePreloader();
+                    showToast('Registration successful! Redirecting to login...', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = "{% url 'user_login' %}";
+                    }, 2000);
+                } else {
+                    // Error - show toast
+                    hidePreloader();
+                    
+                    // Get error message
+                    let errorMessage = 'Registration failed. Please try again.';
+                    if (data.full_name) {
+                        errorMessage = data.full_name[0];
+                    } else if (data.login_email) {
+                        errorMessage = data.login_email[0];
+                    } else if (data.password) {
+                        errorMessage = data.password[0];
+                    } else if (data.confirm_password) {
+                        errorMessage = data.confirm_password[0];
+                    } else if (data.non_field_errors) {
+                        errorMessage = data.non_field_errors[0];
+                    } else if (data.detail) {
+                        errorMessage = data.detail;
+                    } else if (typeof data === 'string') {
+                        errorMessage = data;
+                    }
+                    
+                    showToast(errorMessage);
+                    
+                    // Reset button state
+                    button.disabled = false;
+                    button.classList.remove('opacity-75');
+                    buttonIcon.innerHTML = `
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <line x1="19" x2="19" y1="8" y2="14"></line>
+                        <line x1="22" x2="16" y1="11" y2="11"></line>
+                    `;
+                    buttonText.textContent = 'Register';
+                }
+            } catch (error) {
+                hidePreloader();
+                showToast('An error occurred. Please try again.');
+                
+                // Reset button state
+                button.disabled = false;
+                button.classList.remove('opacity-75');
+                buttonIcon.innerHTML = `
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <line x1="19" x2="19" y1="8" y2="14"></line>
+                    <line x1="22" x2="16" y1="11" y2="11"></line>
+                `;
+                buttonText.textContent = 'Register';
+            }
+        });
+    </script>
+</body>
+</html>

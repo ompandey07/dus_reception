@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-2xl font-semibold mb-4">Welcome, {{ username }}</h1>
+
+        <div class="space-y-2">
+            <p><strong>Email:</strong> {{ email }}</p>
+            <p><strong>Superuser:</strong> {{ is_superuser }}</p>
+            <p><strong>Staff:</strong> {{ is_staff }}</p>
+        </div>
+
+        <div class="mt-6">
+                      <form method="POST" action="{% url 'admin_logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                  Logout
+              </button>
+          </form>
+
+        </div>
+    </div>
+
+    <script>
+        // Helper function to get a cookie value
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        // Populate hidden refresh token input
+        document.getElementById("refreshToken").value = getCookie("refresh") || "";
+    </script>
+</body>
+</html>
