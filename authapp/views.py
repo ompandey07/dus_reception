@@ -1,6 +1,7 @@
 from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -193,7 +194,7 @@ class CustomUserDashboardView(APIView):
 
 
 # ============================================================
-# CUSTOM USER REGISTRATION VIEW (Optional)
+# CUSTOM USER REGISTRATION VIEW
 # ============================================================
 class CustomUserRegistrationView(APIView):
     """
@@ -218,3 +219,82 @@ class CustomUserRegistrationView(APIView):
             return redirect("user_login")
         
         return JsonResponse(serializer.errors, status=400)
+
+
+# ============================================================
+# CUSTOM USER API VIEW (List, Update, Delete)
+# ============================================================
+class CustomUserAPIView(APIView):
+    """
+    Handles user CRUD operations via API.
+    """
+    def get(self, request, user_id=None):
+        """List all users or get single user"""
+        if user_id:
+            # Get single user
+            user = get_object_or_404(CustomUser, id=user_id)
+            return JsonResponse({
+                'id': user.id,
+                'full_name': user.full_name,
+                'login_email': user.login_email,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            })
+        else:
+            # List all users
+            users = CustomUser.objects.all().order_by('-created_at')
+            users_data = [{
+                'id': user.id,
+                'full_name': user.full_name,
+                'login_email': user.login_email,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            } for user in users]
+            
+            return JsonResponse({
+                'users': users_data,
+                'count': len(users_data)
+            })
+    
+    def put(self, request, user_id):
+        """Update user"""
+        user = get_object_or_404(CustomUser, id=user_id)
+        
+        full_name = request.data.get('full_name', '').strip()
+        login_email = request.data.get('login_email', '').strip()
+        
+        # Validation
+        if not full_name:
+            return JsonResponse({'error': 'Full name is required'}, status=400)
+        
+        if not login_email:
+            return JsonResponse({'error': 'Email is required'}, status=400)
+        
+        # Check if email already exists for another user
+        if CustomUser.objects.filter(login_email=login_email).exclude(id=user_id).exists():
+            return JsonResponse({'error': 'Email already exists'}, status=400)
+        
+        # Update user
+        user.full_name = full_name
+        user.login_email = login_email
+        user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'User updated successfully',
+            'user': {
+                'id': user.id,
+                'full_name': user.full_name,
+                'login_email': user.login_email,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            }
+        })
+    
+    def delete(self, request, user_id):
+        """Delete user"""
+        user = get_object_or_404(CustomUser, id=user_id)
+        user_name = user.full_name
+        user.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'User "{user_name}" deleted successfully'
+        })

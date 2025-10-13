@@ -1,16 +1,16 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from . import views
+from . import views , base_views
 
 # ============================================================
 # Backup App URL Patterns
 # ============================================================
 urlpatterns = [ 
     # --------------------------------------------------------
-    # ADMIN AUTH ROUTES
+    # BASIC RENDER VIEWS
     # --------------------------------------------------------
-    # path('takebackup/', views.take_backup_control, name='take_backup_control'),
+    path('', base_views.index_page, name='index_page'),
 
     
     

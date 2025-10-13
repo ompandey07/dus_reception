@@ -125,3 +125,10 @@ class CustomUserRegistrationSerializer(serializers.ModelSerializer):
         )
         
         return custom_user
+    
+class CustomUserListSerializer(serializers.ModelSerializer):
+    """Serializer for listing users"""
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'full_name', 'login_email', 'created_at']
+        read_only_fields = ['id', 'created_at']    

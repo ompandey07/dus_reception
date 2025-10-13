@@ -1,41 +1,205 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100">
-    <div class="max-w-4xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-6">
-        <h1 class="text-2xl font-semibold mb-4">Welcome, {{ username }}</h1>
+<body class="bg-gray-50">
+    
+    <!-- Top Navigation -->
+    <nav class="bg-white shadow-sm h-16 fixed top-0 left-0 right-0 z-50 border-b border-gray-300">
+        <div class="flex items-center justify-between h-full px-4 sm:px-6">
+            <div class="flex items-center space-x-4">
+                <!-- Hamburger Menu Button -->
+                <button id="menuToggle" class="lg:hidden text-gray-700 hover:text-gray-900 focus:outline-none">
+                    <i class="ri-menu-line text-2xl"></i>
+                </button>
+                <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="h-8 sm:h-10">
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-700 text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{{ username }}</span>
+            </div>
+        </div>
+    </nav>
 
-        <div class="space-y-2">
-            <p><strong>Email:</strong> {{ email }}</p>
-            <p><strong>Superuser:</strong> {{ is_superuser }}</p>
-            <p><strong>Staff:</strong> {{ is_staff }}</p>
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-white shadow-sm pt-6 border-r border-gray-300 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40">
+        <!-- Close Button (Mobile Only) -->
+        <button id="closeMenu" class="lg:hidden absolute top-4 right-4 text-gray-700 hover:text-gray-900 focus:outline-none">
+            <i class="ri-close-line text-2xl"></i>
+        </button>
+        
+        <nav class="px-4 space-y-2 mt-8 lg:mt-0">
+            <a href="{% url 'admin_dashboard' %}" class="flex items-center space-x-3 px-4 py-3 bg-blue-500 text-white rounded">
+                <i class="ri-dashboard-line text-xl"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url "user_register" %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
+                <i class="ri-user-line text-xl"></i>
+                <span>Manage Users</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
+                <i class="ri-calendar-line text-xl"></i>
+                <span>Booking Calendar</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
+                <i class="ri-line-chart-line text-xl"></i>
+                <span>Activity Log</span>
+            </a>
+            <form method="POST" action="{% url 'admin_logout' %}" class="pt-4">
+                {% csrf_token %}
+                <button type="submit" class="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 transition w-full text-left rounded">
+                    <i class="ri-logout-box-line text-xl"></i>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 mt-16 p-4 sm:p-6">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+            <!-- Recent Bookings Card -->
+            <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs sm:text-sm">Recent Bookings</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">248</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 sm:p-4 rounded-lg">
+                        <i class="ri-calendar-check-line text-3xl sm:text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Users Card -->
+            <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs sm:text-sm">Total Users</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">1,542</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 sm:p-4 rounded-lg">
+                        <i class="ri-group-line text-3xl sm:text-4xl text-purple-600"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Card -->
+            <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg sm:col-span-2 lg:col-span-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs sm:text-sm">Advance Collected</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">NPR : 45,231</p>
+                    </div>
+                    <div class="bg-green-100 p-3 sm:p-4 rounded-lg">
+                        <i class="ri-money-dollar-circle-line text-3xl sm:text-4xl text-green-600"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mt-6">
-                      <form method="POST" action="{% url 'admin_logout' %}">
-              {% csrf_token %}
-              <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
-                  Logout
-              </button>
-          </form>
-
+        <!-- Recent Activity Table -->
+        <div class="bg-white shadow-sm p-4 sm:p-6 mt-6 rounded-lg">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+            <div class="overflow-x-auto -mx-4 sm:mx-0">
+                <div class="inline-block min-w-full align-middle">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">User</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Action</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 hidden sm:table-cell">Date</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">John Doe</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">New Booking</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">2 hours ago</td>
+                                <td class="px-3 sm:px-4 py-3"><span class="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full text-xs">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">Jane Smith</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">Account Created</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">5 hours ago</td>
+                                <td class="px-3 sm:px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs">Active</span></td>
+                            </tr>
+                            <tr>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">Mike Johnson</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">Booking Cancelled</td>
+                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">1 day ago</td>
+                                <td class="px-3 sm:px-4 py-3"><span class="bg-red-100 text-red-800 px-2 sm:px-3 py-1 rounded-full text-xs">Cancelled</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        // Helper function to get a cookie value
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
+        // Hamburger Menu Toggle Logic
+        const menuToggle = document.getElementById('menuToggle');
+        const closeMenu = document.getElementById('closeMenu');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
 
-        // Populate hidden refresh token input
-        document.getElementById("refreshToken").value = getCookie("refresh") || "";
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        menuToggle.addEventListener('click', openSidebar);
+        closeMenu.addEventListener('click', closeSidebar);
+        overlay.addEventListener('click', closeSidebar);
+
+        // Close sidebar when clicking on a menu item (mobile)
+        const menuLinks = sidebar.querySelectorAll('a, button[type="submit"]');
+        menuLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeSidebar();
+                }
+            });
+        });
+
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Debug: Log cookies on page load
+        console.log('All cookies:', document.cookie);
+        console.log('Access token:', getCookie('access'));
     </script>
+
 </body>
 </html>
