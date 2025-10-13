@@ -8,19 +8,17 @@ from . import views
 # ============================================================
 urlpatterns = [ 
     # --------------------------------------------------------
-    # ADMIN AUTH ROUTES
+    # UNIFIED AUTH ROUTES (handles both admin & user)
     # --------------------------------------------------------
-    path("admin/login/", views.LoginView.as_view(), {'user_type': 'admin'}, name="admin_login"),
-    path("admin/logout/", views.AdminLogoutView.as_view(), name="admin_logout"),
+    path("login/", views.LoginView.as_view(), name="login"),
+    path("logout/", views.LogoutView.as_view(), name="logout"),
+    path("register/", views.CustomUserRegistrationView.as_view(), name="user_register"),
+    
+    # --------------------------------------------------------
+    # DASHBOARD ROUTES
+    # --------------------------------------------------------
     path("admin/dashboard/", views.AdminDashboardView.as_view(), name="admin_dashboard"),
-
-    # --------------------------------------------------------
-    # CUSTOM USER AUTH ROUTES
-    # --------------------------------------------------------
-    path("user/login/", views.LoginView.as_view(), {'user_type': 'user'}, name="user_login"),
-    path("user/logout/", views.CustomUserLogoutView.as_view(), name="user_logout"),
     path("user/dashboard/", views.CustomUserDashboardView.as_view(), name="user_dashboard"),
-    path("user/register/", views.CustomUserRegistrationView.as_view(), name="user_register"),
     
     # --------------------------------------------------------
     # CUSTOM USER API ROUTES
@@ -30,9 +28,10 @@ urlpatterns = [
 ]
 
 # ============================================================
-# Serve media files in development and production
+# Serve media files
 # ============================================================
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 else:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

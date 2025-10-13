@@ -1,22 +1,12 @@
-from rest_framework.decorators import authentication_classes, permission_classes
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework import status
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.hashers import make_password, check_password
+from django.views import View
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import TokenError
 
-from .serializers import (
-    AdminLoginSerializer, 
-    AdminLogoutSerializer,
-    CustomUserLoginSerializer,
-    CustomUserLogoutSerializer,
-    CustomUserRegistrationSerializer
-)
 from .models import CustomUser
 
 User = get_user_model()
@@ -39,123 +29,187 @@ class CookieJWTAuthentication(JWTAuthentication):
 
 
 # ============================================================
-# SHARED LOGIN VIEW (ADMIN + CUSTOM USER)
+# UNIFIED LOGIN VIEW (ONE ROUTE FOR BOTH ADMIN & USER)
 # ============================================================
-class LoginView(APIView):
+class LoginView(View):
     """
-    Universal Login View:
-    Handles both Admin and CustomUser login based on routing.
+    Single Login View: Automatically detects and handles both Admin and CustomUser login.
+    Redirects to appropriate dashboard based on user type.
     """
-    def get(self, request, user_type='admin'):
-        # Render the login page with user_type context
-        return render(request, "Auth/login.html", {"user_type": user_type})
+    def get(self, request):
+        return render(request, "Auth/login.html")
 
-    def post(self, request, user_type='admin'):
-        # Route to appropriate serializer based on user_type
-        if user_type == 'admin':
-            serializer = AdminLoginSerializer(data=request.data)
-            redirect_url = "admin_dashboard"
-            cookie_based = True
+    def post(self, request):
+        # Get credentials from request
+        if request.content_type == 'application/json':
+            import json
+            try:
+                data = json.loads(request.body)
+                email = data.get('email', '').strip()
+                password = data.get('password', '').strip()
+            except json.JSONDecodeError:
+                return JsonResponse({'error': 'Invalid JSON'}, status=400)
         else:
-            serializer = CustomUserLoginSerializer(data=request.data)
-            redirect_url = "user_dashboard"
-            cookie_based = False
+            email = request.POST.get('email', '').strip()
+            password = request.POST.get('password', '').strip()
         
-        if serializer.is_valid():
-            data = serializer.validated_data
-            
-            # For JSON request
-            if request.content_type == 'application/json':
-                if cookie_based:
-                    # Admin login with cookies
-                    response = JsonResponse({
-                        'success': True,
-                        'message': 'Login successful',
-                        'user_type': user_type
-                    })
-                    response.set_cookie("access", data["access"], httponly=True, samesite='Lax')
-                    response.set_cookie("refresh", data["refresh"], httponly=True, samesite='Lax')
-                    response.set_cookie("user_type", user_type, httponly=True, samesite='Lax')
-                else:
-                    # CustomUser login - just return JSON
-                    response = JsonResponse({
-                        'success': True,
-                        'message': 'Login successful',
-                        'user_type': user_type,
-                        'user_data': data
-                    })
-                    # Set simple session cookie for custom user
-                    response.set_cookie("custom_user_id", data["id"], httponly=True, samesite='Lax')
-                    response.set_cookie("user_type", user_type, httponly=True, samesite='Lax')
-                
-                return response
-            
-            # For regular form submission
-            if cookie_based:
-                response = redirect(redirect_url)
-                response.set_cookie("access", data["access"], httponly=True, samesite='Lax')
-                response.set_cookie("refresh", data["refresh"], httponly=True, samesite='Lax')
-                response.set_cookie("user_type", user_type, httponly=True, samesite='Lax')
-            else:
-                response = redirect(redirect_url)
-                response.set_cookie("custom_user_id", data["id"], httponly=True, samesite='Lax')
-                response.set_cookie("user_type", user_type, httponly=True, samesite='Lax')
-            
-            return response
+        # Validation
+        if not email or not password:
+            return JsonResponse({'error': 'Email and password are required'}, status=400)
         
-        return JsonResponse(serializer.errors, status=400)
-
-
-# ============================================================
-# ADMIN LOGOUT VIEW
-# ============================================================
-@authentication_classes([CookieJWTAuthentication])
-@permission_classes([IsAuthenticated])
-class AdminLogoutView(APIView):
-    def post(self, request):
-        refresh_token = request.COOKIES.get("refresh")
-        if not refresh_token:
-            return Response({"error": "No refresh token found"}, status=400)
-
-        serializer = AdminLogoutSerializer(data={"refresh": refresh_token})
-        if serializer.is_valid():
-            serializer.save()
-            response = redirect("admin_login")
-            response.delete_cookie("access")
-            response.delete_cookie("refresh")
-            response.delete_cookie("user_type")
-            return response
-        return Response({"error": list(serializer.errors.values())[0][0]}, status=400)
-
-
-# ============================================================
-# CUSTOM USER LOGOUT VIEW
-# ============================================================
-class CustomUserLogoutView(APIView):
-    def post(self, request):
-        # Simple logout for custom users
+        # Try Admin Login First
+        try:
+            user_obj = User.objects.get(email=email)
+            user = authenticate(username=user_obj.username, password=password)
+            
+            if user and (user.is_superuser or user.is_staff):
+                # Admin Login Success
+                return self._login_admin(request, user)
+        except User.DoesNotExist:
+            pass
+        
+        # Try Custom User Login
+        try:
+            custom_user = CustomUser.objects.get(login_email=email)
+            if check_password(password, custom_user.login_password):
+                # Custom User Login Success
+                return self._login_custom_user(request, custom_user)
+        except CustomUser.DoesNotExist:
+            pass
+        
+        # Login Failed
+        return JsonResponse({'error': 'Invalid email or password'}, status=400)
+    
+    def _login_admin(self, request, user):
+        """Handle admin user login"""
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
+        # Prepare response
         if request.content_type == 'application/json':
             response = JsonResponse({
                 'success': True,
-                'message': 'Logged out successfully'
+                'message': 'Login successful',
+                'user_type': 'admin',
+                'redirect': '/auth/admin/dashboard/'  # Fixed: Added /auth/ prefix
             })
         else:
-            response = redirect("user_login")
+            response = redirect('admin_dashboard')
         
+        # Set cookies
+        response.set_cookie("access", access_token, httponly=True, samesite='Lax')
+        response.set_cookie("refresh", refresh_token, httponly=True, samesite='Lax')
+        response.set_cookie("user_type", 'admin', httponly=True, samesite='Lax')
+        
+        return response
+    
+    def _login_custom_user(self, request, custom_user):
+        """Handle custom user login"""
+        # Prepare response
+        if request.content_type == 'application/json':
+            response = JsonResponse({
+                'success': True,
+                'message': 'Login successful',
+                'user_type': 'user',
+                'redirect': '/auth/user/dashboard/',  # Fixed: Added /auth/ prefix
+                'user_data': {
+                    'id': custom_user.id,
+                    'full_name': custom_user.full_name,
+                    'email': custom_user.login_email
+                }
+            })
+        else:
+            response = redirect('user_dashboard')
+        
+        # Set cookies
+        response.set_cookie("custom_user_id", custom_user.id, httponly=True, samesite='Lax')
+        response.set_cookie("user_type", 'user', httponly=True, samesite='Lax')
+        
+        return response
+# ============================================================
+# UNIFIED LOGOUT VIEW (ONE ROUTE FOR BOTH)
+# ============================================================
+class LogoutView(View):
+    """
+    Single Logout View: Handles both Admin and CustomUser logout.
+    Automatically detects user type and clears appropriate cookies.
+    """
+    def post(self, request):
+        user_type = request.COOKIES.get("user_type")
+        
+        # Handle Admin Logout
+        if user_type == 'admin':
+            refresh_token = request.COOKIES.get("refresh")
+            
+            if refresh_token:
+                try:
+                    token = RefreshToken(refresh_token)
+                    token.blacklist()
+                except TokenError:
+                    pass  # Token already invalid, continue logout
+            
+            # Prepare response
+            if request.content_type == 'application/json':
+                response = JsonResponse({
+                    'success': True,
+                    'message': 'Logged out successfully',
+                    'redirect': '/login/'
+                })
+            else:
+                response = redirect('login')
+            
+            # Clear admin cookies
+            response.delete_cookie("access")
+            response.delete_cookie("refresh")
+            response.delete_cookie("user_type")
+            
+            return response
+        
+        # Handle Custom User Logout
+        if request.content_type == 'application/json':
+            response = JsonResponse({
+                'success': True,
+                'message': 'Logged out successfully',
+                'redirect': '/login/'
+            })
+        else:
+            response = redirect('login')
+        
+        # Clear custom user cookies
         response.delete_cookie("custom_user_id")
         response.delete_cookie("user_type")
+        
         return response
 
 
 # ============================================================
 # ADMIN DASHBOARD VIEW
 # ============================================================
-@authentication_classes([CookieJWTAuthentication])
-@permission_classes([IsAuthenticated])
-class AdminDashboardView(APIView):
-    """
-    Renders dashboard page for authenticated admin users.
-    """
+class AdminDashboardView(View):
+    """Renders dashboard page for authenticated admin users"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check authentication
+        access_token = request.COOKIES.get("access")
+        user_type = request.COOKIES.get("user_type")
+        
+        if not access_token or user_type != 'admin':
+            return redirect('login')
+        
+        # Validate token and get user
+        auth = CookieJWTAuthentication()
+        try:
+            user_auth = auth.authenticate(request)
+            if user_auth is None:
+                return redirect('login')
+            request.user = user_auth[0]
+        except Exception:
+            return redirect('login')
+        
+        return super().dispatch(request, *args, **kwargs)
+    
     def get(self, request):
         user = request.user
         context = {
@@ -170,15 +224,15 @@ class AdminDashboardView(APIView):
 # ============================================================
 # CUSTOM USER DASHBOARD VIEW
 # ============================================================
-class CustomUserDashboardView(APIView):
-    """
-    Renders dashboard page for authenticated custom users.
-    """
+class CustomUserDashboardView(View):
+    """Renders dashboard page for authenticated custom users"""
+    
     def get(self, request):
         custom_user_id = request.COOKIES.get("custom_user_id")
+        user_type = request.COOKIES.get("user_type")
         
-        if not custom_user_id:
-            return redirect("user_login")
+        if not custom_user_id or user_type != 'user':
+            return redirect("login")
         
         try:
             custom_user = CustomUser.objects.get(id=custom_user_id)
@@ -190,44 +244,81 @@ class CustomUserDashboardView(APIView):
             }
             return render(request, "user/user_dashboard.html", context)
         except CustomUser.DoesNotExist:
-            return redirect("user_login")
+            return redirect("login")
 
 
 # ============================================================
 # CUSTOM USER REGISTRATION VIEW
 # ============================================================
-class CustomUserRegistrationView(APIView):
-    """
-    Handles custom user registration.
-    """
+class CustomUserRegistrationView(View):
+    """Handles custom user registration"""
+    
     def get(self, request):
         return render(request, "Auth/register.html")
     
     def post(self, request):
-        serializer = CustomUserRegistrationSerializer(data=request.data)
+        # Get data from request
+        if request.content_type == 'application/json':
+            import json
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        else:
+            data = request.POST
         
-        if serializer.is_valid():
-            custom_user = serializer.save()
-            
-            if request.content_type == 'application/json':
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration successful',
-                    'user_id': custom_user.id
-                }, status=201)
-            
-            return redirect("user_login")
+        full_name = data.get('full_name', '').strip()
+        login_email = data.get('login_email', '').strip()
+        password = data.get('password', '').strip()
+        confirm_password = data.get('confirm_password', '').strip()
         
-        return JsonResponse(serializer.errors, status=400)
+        # Validation
+        errors = {}
+        
+        if not full_name:
+            errors['full_name'] = 'Full name is required'
+        
+        if not login_email:
+            errors['login_email'] = 'Email is required'
+        elif CustomUser.objects.filter(login_email=login_email).exists():
+            errors['login_email'] = 'Email already registered'
+        
+        if not password:
+            errors['password'] = 'Password is required'
+        elif len(password) < 6:
+            errors['password'] = 'Password must be at least 6 characters'
+        
+        if password != confirm_password:
+            errors['confirm_password'] = 'Passwords do not match'
+        
+        if errors:
+            return JsonResponse(errors, status=400)
+        
+        # Create user
+        custom_user = CustomUser.objects.create(
+            full_name=full_name,
+            login_email=login_email,
+            login_password=make_password(password),
+            created_by=request.user if hasattr(request, 'user') and request.user.is_authenticated else None
+        )
+        
+        if request.content_type == 'application/json':
+            return JsonResponse({
+                'success': True,
+                'message': 'Registration successful',
+                'user_id': custom_user.id,
+                'redirect': '/login/'
+            }, status=201)
+        
+        return redirect("login")
 
 
 # ============================================================
 # CUSTOM USER API VIEW (List, Update, Delete)
 # ============================================================
-class CustomUserAPIView(APIView):
-    """
-    Handles user CRUD operations via API.
-    """
+class CustomUserAPIView(View):
+    """Handles user CRUD operations via API"""
+    
     def get(self, request, user_id=None):
         """List all users or get single user"""
         if user_id:
@@ -258,8 +349,15 @@ class CustomUserAPIView(APIView):
         """Update user"""
         user = get_object_or_404(CustomUser, id=user_id)
         
-        full_name = request.data.get('full_name', '').strip()
-        login_email = request.data.get('login_email', '').strip()
+        # Parse JSON data
+        import json
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        full_name = data.get('full_name', '').strip()
+        login_email = data.get('login_email', '').strip()
         
         # Validation
         if not full_name:

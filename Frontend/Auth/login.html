@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if user_type == 'admin' %}ADMIN LOGIN{% else %}USER LOGIN{% endif %}</title>
+    <title>LOGIN</title>
     <link rel="shortcut icon" href="{% static 'Logo/Logo.png' %}" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{% static 'Assests/css/login.css' %}">
@@ -21,9 +21,8 @@
             <div class="inline-flex items-center justify-center w-24 h-24 mb-4">
                 <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="w-full h-full object-cover">
             </div>
-            <h1 class="text-3xl font-bold text-gray-800">
-                {% if user_type == 'admin' %}Admin Login{% else %}User Login{% endif %}
-            </h1>
+            <h1 class="text-3xl font-bold text-gray-800">Login</h1>
+            <p class="text-gray-600 mt-2">Sign in to your account</p>
         </div>
 
         <form id="loginForm">
@@ -44,7 +43,7 @@
                     name="email" 
                     id="emailInput"
                     class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all text-gray-800"
-                    placeholder="{% if user_type == 'admin' %}admin@example.com{% else %}user@example.com{% endif %}"
+                    placeholder="your@email.com"
                     required
                 >
             </div>
@@ -83,26 +82,21 @@
             </button>
         </form>
 
-        <div class="mt-6 text-center">
-            <a href="#" class="text-purple-600 hover:text-purple-700 text-sm font-medium hover:underline">
+        <div class="mt-6 text-center space-y-3">
+            <a href="#" class="text-purple-600 hover:text-purple-700 text-sm font-medium hover:underline block">
                 Forgot password?
             </a>
+           
         </div>
     </div>
 
     <script src="{% static 'Assests/js/login.js' %}"></script>
     <script>
-        // Initialize the login form with Django template variables
-        const USER_TYPE = "{{ user_type }}";
-        const LOGIN_URL = USER_TYPE === 'admin' 
-            ? "{% url 'admin_login' %}" 
-            : "{% url 'user_login' %}";
-        const DASHBOARD_URL = USER_TYPE === 'admin'
-            ? "{% url 'admin_dashboard' %}"
-            : "{% url 'user_dashboard' %}";
+        // Initialize the login form with unified login URL
+        const LOGIN_URL = "{% url 'login' %}";
         
-        // Initialize login form
-        initLoginForm(USER_TYPE, LOGIN_URL, DASHBOARD_URL);
+        // Initialize login form (the redirect will be handled by the backend response)
+        initLoginForm(LOGIN_URL);
     </script>
 </body>
 </html>

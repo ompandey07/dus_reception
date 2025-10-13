@@ -6,14 +6,16 @@ from . import views , base_views
 # ============================================================
 # Backup App URL Patterns
 # ============================================================
-urlpatterns = [ 
-    # --------------------------------------------------------
-    # BASIC RENDER VIEWS
-    # --------------------------------------------------------
-    path('', base_views.index_page, name='index_page'),
-
+urlpatterns = [
+    # Main calendar view
+    path('calendar/', views.calendar_view, name='calendar'),
     
-    
+    # API endpoints
+    path('api/bookings/', views.get_bookings, name='get_bookings'),
+    path('api/bookings/date/<str:date_str>/', views.get_bookings_by_date, name='get_bookings_by_date'),
+    path('api/bookings/create/', views.create_booking, name='create_booking'),
+    path('api/bookings/<int:booking_id>/update/', views.update_booking, name='update_booking'),
+    path('api/bookings/<int:booking_id>/delete/', views.delete_booking, name='delete_booking'),
 ]
 
 # ============================================================

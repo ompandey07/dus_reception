@@ -53,7 +53,7 @@
                 <i class="ri-line-chart-line text-xl"></i>
                 <span>Activity Log</span>
             </a>
-            <form method="POST" action="{% url 'admin_logout' %}" class="pt-4">
+            <form method="POST" action="{% url 'logout' %}" class="pt-4">
                 {% csrf_token %}
                 <button type="submit" class="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 transition w-full text-left rounded">
                     <i class="ri-logout-box-line text-xl"></i>
