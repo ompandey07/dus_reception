@@ -16,13 +16,15 @@ DEBUG = True
 # ALLOWED_HOSTS SETTING
 ALLOWED_HOSTS = [
     "localhost",
-    "127.0.0.1",    
+    "127.0.0.1",
+    '192.168.101.24'    
 ]
 
 # CSRF TRUSTED_ORIGINS SETTING
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
-    "http://127.0.0.1:8000",    
+    "http://127.0.0.1:8000",
+    'http://192.168.101.24:8000/'    
 ]
 
 
