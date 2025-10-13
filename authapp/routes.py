@@ -21,6 +21,10 @@ urlpatterns = [
     path("user/logout/", views.CustomUserLogoutView.as_view(), name="user_logout"),
     path("user/dashboard/", views.CustomUserDashboardView.as_view(), name="user_dashboard"),
     path("user/register/", views.CustomUserRegistrationView.as_view(), name="user_register"),
+    
+    # --------------------------------------------------------
+    # CUSTOM USER API ROUTES
+    # --------------------------------------------------------
     path("api/users/", views.CustomUserAPIView.as_view(), name="user_list_api"),
     path("api/users/<int:user_id>/", views.CustomUserAPIView.as_view(), name="user_detail_api"),
 ]
