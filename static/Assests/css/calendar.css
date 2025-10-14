@@ -184,12 +184,12 @@
 /* Calendar Grid - PROPER GRID LAYOUT */
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 0;
     background: #e5e7eb;
     border: 1px solid #e5e7eb;
     width: 100%;
-    min-width: 700px;
+    min-width: 0;
 }
 
 .calendar-header {
@@ -466,11 +466,20 @@
     .detail-grid {
         grid-template-columns: 1fr;
     }
+
+    #addBookingModal .modal-content,
+    #editBookingModal .modal-content {
+        max-width: 90vw;
+    }
+
+    #viewBookingsModal .modal-content {
+        max-width: 95vw;
+    }
 }
 
 @media (max-width: 768px) {
     .calendar-grid {
-        min-width: 600px;
+        grid-template-columns: repeat(7, minmax(60px, 1fr));
     }
     
     .calendar-day {
@@ -512,7 +521,7 @@
 
 @media (max-width: 640px) {
     .calendar-grid {
-        min-width: 500px;
+        grid-template-columns: repeat(7, minmax(40px, 1fr));
     }
     
     .calendar-day {
@@ -563,5 +572,16 @@
         flex: 1;
         min-width: 80px;
         justify-content: center;
+    }
+
+    #addBookingModal .modal-content,
+    #editBookingModal .modal-content,
+    #viewBookingsModal .modal-content {
+        max-width: 100vw;
+        padding: 1rem;
+    }
+
+    .modal-backdrop {
+        padding: 0;
     }
 }
