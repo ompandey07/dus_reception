@@ -9,10 +9,52 @@ from django.db.models import Q
 from datetime import datetime, date, timedelta
 import json
 import nepali_datetime
+from authapp.decorators import login_required_dual
+from authapp.models import CustomUser
+from .models import Booking, ActivityLog
 
-from .models import Booking, CustomUser
+
+# ============================================================
+# ACTIVITY LOG HELPER FUNCTIONS
+# ============================================================
+def get_client_ip(request):
+    """Get client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 
+def log_activity(action, entity_type, entity_id=None, entity_name='', description='', request=None, performed_by_user=None, performed_by_custom=None):
+    """
+    Helper function to create activity logs
+    Usage: log_activity('create', 'booking', booking.id, booking.client_name, 'Created new booking', request)
+    """
+    try:
+        ip_address = get_client_ip(request) if request else None
+        user_agent = request.META.get('HTTP_USER_AGENT', '') if request else ''
+        
+        ActivityLog.objects.create(
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_name=entity_name,
+            description=description,
+            performed_by_user=performed_by_user,
+            performed_by_custom=performed_by_custom,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        # Silent fail - don't break main functionality if logging fails
+        print(f"Activity logging error: {e}")
+
+
+# ============================================================
+# NEPALI DATE HELPER
+# ============================================================
 def get_nepali_date(english_date):
     """Convert English date to Nepali date"""
     try:
@@ -30,6 +72,10 @@ def get_nepali_date(english_date):
         return None
 
 
+# ============================================================
+# CALENDAR VIEWS
+# ============================================================
+@login_required_dual(login_url='/unauthorized/')
 def calendar_view(request):
     """Render the calendar booking page"""
     # Get all custom users for filter dropdown
@@ -46,6 +92,7 @@ def calendar_view(request):
     return render(request, 'Function/calendar.html', context)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["GET"])
 def get_calendar_data(request):
     """API endpoint to get calendar data with Nepali dates"""
@@ -105,6 +152,10 @@ def get_calendar_data(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# ============================================================
+# BOOKING VIEWS
+# ============================================================
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["GET"])
 def get_bookings(request):
     """API endpoint to get all bookings with Nepali dates"""
@@ -147,6 +198,7 @@ def get_bookings(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["GET"])
 def get_booking_detail(request, booking_id):
     """API endpoint to get detailed booking information"""
@@ -181,6 +233,7 @@ def get_booking_detail(request, booking_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["GET"])
 def get_bookings_by_date(request, date_str):
     """API endpoint to get bookings for a specific date"""
@@ -218,6 +271,7 @@ def get_bookings_by_date(request, date_str):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["POST"])
 def create_booking(request):
     """API endpoint to create a new booking"""
@@ -245,6 +299,22 @@ def create_booking(request):
         if bookings_on_date >= 2:
             return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
         
+        # Determine creator (admin or custom user)
+        created_by_user = None
+        created_by_custom = None
+        
+        if request.user.is_authenticated:
+            # Django admin user
+            created_by_user = request.user
+        else:
+            # Custom user (via cookie)
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    created_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
         # Create booking
         booking = Booking.objects.create(
             client_name=data['client_name'],
@@ -255,7 +325,20 @@ def create_booking(request):
             email=data.get('email', ''),
             event_type=data['event_type'],
             advance_given=data.get('advance_given', 0.00),
-            created_by_user=request.user if request.user.is_authenticated else None
+            created_by_user=created_by_user,
+            created_by_custom=created_by_custom
+        )
+        
+        # Log booking creation activity
+        log_activity(
+            'create',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking.client_name,
+            description=f'Created new booking for {booking.client_name} on {booking.booking_date} ({booking.event_type})',
+            request=request,
+            performed_by_user=created_by_user,
+            performed_by_custom=created_by_custom
         )
         
         nepali_date = get_nepali_date(booking.booking_date)
@@ -281,6 +364,7 @@ def create_booking(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["PUT"])
 def update_booking(request, booking_id):
     """API endpoint to update a booking"""
@@ -288,13 +372,17 @@ def update_booking(request, booking_id):
         booking = Booking.objects.get(id=booking_id)
         data = json.loads(request.body)
         
+        # Store old values for logging
+        old_client_name = booking.client_name
+        old_date = booking.booking_date
+        
         # Update fields
         if 'client_name' in data:
             booking.client_name = data['client_name']
         if 'booking_date' in data:
             new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
             if new_date != booking.booking_date:
-                count = Booking.objects.filter(booking_date=new_date).count()
+                count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
                 if count >= 2:
                     return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
             booking.booking_date = new_date
@@ -316,6 +404,32 @@ def update_booking(request, booking_id):
             return JsonResponse({'error': 'End time must be after start time'}, status=400)
         
         booking.save()
+        
+        # Determine who performed the update
+        performed_by_user = None
+        performed_by_custom = None
+        
+        if request.user.is_authenticated:
+            performed_by_user = request.user
+        else:
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
+        # Log booking update activity
+        log_activity(
+            'update',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking.client_name,
+            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.event_type})',
+            request=request,
+            performed_by_user=performed_by_user,
+            performed_by_custom=performed_by_custom
+        )
         
         nepali_date = get_nepali_date(booking.booking_date)
         
@@ -342,11 +456,44 @@ def update_booking(request, booking_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["DELETE"])
 def delete_booking(request, booking_id):
     """API endpoint to delete a booking"""
     try:
         booking = Booking.objects.get(id=booking_id)
+        
+        # Store booking info before deletion
+        booking_client_name = booking.client_name
+        booking_date = booking.booking_date
+        booking_event_type = booking.event_type
+        
+        # Determine who performed the deletion
+        performed_by_user = None
+        performed_by_custom = None
+        
+        if request.user.is_authenticated:
+            performed_by_user = request.user
+        else:
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
+        # Log booking deletion activity BEFORE deleting
+        log_activity(
+            'delete',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking_client_name,
+            description=f'Deleted booking for {booking_client_name} on {booking_date} ({booking_event_type})',
+            request=request,
+            performed_by_user=performed_by_user,
+            performed_by_custom=performed_by_custom
+        )
+        
         booking.delete()
         
         return JsonResponse({'message': 'Booking deleted successfully'}, status=200)

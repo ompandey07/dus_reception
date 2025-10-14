@@ -1,0 +1,457 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="shortcut icon" href="{% static 'Logo/Logo.png' %}" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .gradient-blue { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+        .gradient-purple { background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); }
+        .gradient-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .gradient-red { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        * { border-radius: 0 !important; }
+        .action-create { border-left: 4px solid #10b981; }
+        .action-update { border-left: 4px solid #3b82f6; }
+        .action-delete { border-left: 4px solid #ef4444; }
+        .action-login { border-left: 4px solid #a855f7; }
+        .action-logout { border-left: 4px solid #6b7280; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    
+    <!-- Top Navigation -->
+    <nav class="bg-white shadow-lg h-16 fixed top-0 left-0 right-0 z-50 border-b-4 border-blue-600">
+        <div class="flex items-center justify-between h-full px-4 sm:px-6">
+            <div class="flex items-center space-x-4">
+                <button id="menuToggle" class="lg:hidden text-gray-700 hover:text-blue-600 focus:outline-none">
+                    <i class="ri-menu-line text-2xl"></i>
+                </button>
+                <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="h-8 sm:h-10">
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-800 text-sm sm:text-base font-semibold truncate max-w-[150px] sm:max-w-none">Activity Log</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-white shadow-xl pt-6 border-r-4 border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40">
+        <button id="closeMenu" class="lg:hidden absolute top-4 right-4 text-gray-700 hover:text-gray-900 focus:outline-none">
+            <i class="ri-close-line text-2xl"></i>
+        </button>
+        
+        <nav class="px-4 space-y-1 mt-8 lg:mt-0">
+            <a href="{% url 'admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition border-l-4 border-transparent hover:border-blue-600 group">
+                <i class="ri-dashboard-line text-lg text-blue-600 group-hover:text-blue-700"></i>
+                <span class="text-sm font-medium">Dashboard</span>
+            </a>
+            <a href="{% url 'user_register' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 transition border-l-4 border-transparent hover:border-purple-600 group">
+                <i class="ri-user-line text-lg text-purple-600 group-hover:text-purple-700"></i>
+                <span class="text-sm font-medium">Manage Users</span>
+            </a>
+            <a href="{% url 'calendar_view' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition border-l-4 border-transparent hover:border-blue-600 group">
+                <i class="ri-calendar-line text-lg text-blue-600 group-hover:text-blue-700"></i>
+                <span class="text-sm font-medium">Booking Calendar</span>
+            </a>
+            <a href="{% url 'booking_reports_view' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition border-l-4 border-transparent hover:border-blue-600 group">
+                <i class="ri-file-list-line text-lg text-blue-600 group-hover:text-blue-700"></i>
+                <span class="text-sm font-medium">Booking Reports</span>
+            </a>
+            <a href="{% url 'activity_log_view' %}" class="flex items-center space-x-3 px-3 py-2.5 gradient-green text-white shadow-md border-l-4 border-green-700">
+                <i class="ri-line-chart-line text-lg"></i>
+                <span class="text-sm font-medium">Activity Log</span>
+            </a>
+            <form method="POST" action="{% url 'logout' %}" class="pt-4">
+                {% csrf_token %}
+                <button type="submit" class="flex items-center space-x-3 px-3 py-2.5 text-red-600 hover:bg-red-50 transition w-full text-left border-l-4 border-transparent hover:border-red-600 group">
+                    <i class="ri-logout-box-line text-lg group-hover:text-red-700"></i>
+                    <span class="text-sm font-medium">Logout</span>
+                </button>
+            </form>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-64 mt-16 p-4 sm:p-6">
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+            <!-- Total Activities -->
+            <div class="bg-white shadow-lg p-6 card-hover fade-in border-l-4 border-blue-600">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Total Activities</p>
+                        <p class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mt-2" id="totalActivities">0</p>
+                    </div>
+                    <div class="gradient-blue p-4 shadow-lg">
+                        <i class="ri-pie-chart-line text-4xl text-white"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Activities -->
+            <div class="bg-white shadow-lg p-6 card-hover fade-in border-l-4 border-purple-600" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Today</p>
+                        <p class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent mt-2" id="todayActivities">0</p>
+                    </div>
+                    <div class="gradient-purple p-4 shadow-lg">
+                        <i class="ri-calendar-check-line text-4xl text-white"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Created -->
+            <div class="bg-white shadow-lg p-6 card-hover fade-in border-l-4 border-green-600" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Created</p>
+                        <p class="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent mt-2" id="createCount">0</p>
+                    </div>
+                    <div class="gradient-green p-4 shadow-lg">
+                        <i class="ri-add-circle-line text-4xl text-white"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deleted -->
+            <div class="bg-white shadow-lg p-6 card-hover fade-in border-l-4 border-red-600" style="animation-delay: 0.3s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Deleted</p>
+                        <p class="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent mt-2" id="deleteCount">0</p>
+                    </div>
+                    <div class="gradient-red p-4 shadow-lg">
+                        <i class="ri-delete-bin-line text-4xl text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="bg-white shadow-lg p-4 sm:p-6 mb-6 fade-in border-t-4 border-blue-600" style="animation-delay: 0.4s;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="ri-filter-line text-blue-600 mr-2 text-2xl"></i>
+                    Filters
+                </h3>
+                <button id="clearFilters" class="text-sm text-red-600 hover:text-red-700 font-semibold">
+                    <i class="ri-close-circle-line"></i> Clear All
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Action Filter -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Action</label>
+                    <select id="actionFilter" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                        <option value="">All Actions</option>
+                        <option value="create">Created</option>
+                        <option value="update">Updated</option>
+                        <option value="delete">Deleted</option>
+                        <option value="login">Login</option>
+                        <option value="logout">Logout</option>
+                    </select>
+                </div>
+
+                <!-- Entity Type Filter -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Entity Type</label>
+                    <select id="entityFilter" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                        <option value="">All Types</option>
+                        <option value="booking">Booking</option>
+                        <option value="user">User</option>
+                        <option value="custom_user">Custom User</option>
+                        <option value="system">System</option>
+                    </select>
+                </div>
+
+                <!-- Date From -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date From</label>
+                    <input type="date" id="dateFrom" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                </div>
+
+                <!-- Date To -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date To</label>
+                    <input type="date" id="dateTo" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="mt-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Search</label>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search in entity name or description..." class="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                    <i class="ri-search-line absolute left-3 top-3 text-gray-400"></i>
+                </div>
+            </div>
+
+            <button id="applyFilters" class="mt-4 w-full sm:w-auto px-6 py-2 gradient-blue text-white font-semibold shadow-lg hover:shadow-xl transition">
+                <i class="ri-search-line mr-2"></i>Apply Filters
+            </button>
+        </div>
+
+        <!-- Activity Log Table -->
+        <div class="bg-white shadow-lg p-6 fade-in border-t-4 border-blue-600" style="animation-delay: 0.5s;">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                    <i class="ri-list-check-2 text-blue-600 mr-2 text-2xl"></i>
+                    Activity History
+                </h3>
+                <div class="text-sm text-gray-600">
+                    <span id="totalRecords">0</span> records
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="text-center py-8">
+                <i class="ri-loader-4-line text-4xl text-blue-600 animate-spin"></i>
+                <p class="text-gray-600 mt-2">Loading activities...</p>
+            </div>
+
+            <!-- Activity Log Container -->
+            <div id="activityContainer" class="hidden space-y-3"></div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="ri-inbox-line text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500 text-lg">No activities found</p>
+            </div>
+
+            <!-- Pagination -->
+            <div id="paginationContainer" class="hidden mt-6 flex items-center justify-between border-t-2 border-gray-200 pt-4">
+                <button id="prevPage" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="ri-arrow-left-line mr-1"></i>Previous
+                </button>
+                <div class="text-sm text-gray-600">
+                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                </div>
+                <button id="nextPage" class="px-4 py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next<i class="ri-arrow-right-line ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentPage = 1;
+        const perPage = 20;
+
+        // Menu Toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const closeMenu = document.getElementById('closeMenu');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        menuToggle.addEventListener('click', openSidebar);
+        closeMenu.addEventListener('click', closeSidebar);
+        overlay.addEventListener('click', closeSidebar);
+
+        // Load Activity Stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/activity/stats/?days=30');
+                const data = await response.json();
+                
+                document.getElementById('totalActivities').textContent = data.total_activities;
+                document.getElementById('todayActivities').textContent = data.today_activities;
+                
+                const createStat = data.action_stats.find(s => s.action === 'create');
+                const deleteStat = data.action_stats.find(s => s.action === 'delete');
+                
+                document.getElementById('createCount').textContent = createStat ? createStat.count : 0;
+                document.getElementById('deleteCount').textContent = deleteStat ? deleteStat.count : 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load Activity Logs
+        async function loadActivities(page = 1) {
+            const loadingState = document.getElementById('loadingState');
+            const activityContainer = document.getElementById('activityContainer');
+            const emptyState = document.getElementById('emptyState');
+            const paginationContainer = document.getElementById('paginationContainer');
+
+            // Show loading
+            loadingState.classList.remove('hidden');
+            activityContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+            paginationContainer.classList.add('hidden');
+
+            try {
+                // Build query parameters
+                const params = new URLSearchParams({
+                    page: page,
+                    per_page: perPage
+                });
+
+                const actionFilter = document.getElementById('actionFilter').value;
+                const entityFilter = document.getElementById('entityFilter').value;
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
+                const searchInput = document.getElementById('searchInput').value;
+
+                if (actionFilter) params.append('action', actionFilter);
+                if (entityFilter) params.append('entity_type', entityFilter);
+                if (dateFrom) params.append('date_from', dateFrom);
+                if (dateTo) params.append('date_to', dateTo);
+                if (searchInput) params.append('search', searchInput);
+
+                const response = await fetch(`/activity/logs/?${params.toString()}`);
+                const data = await response.json();
+
+                // Hide loading
+                loadingState.classList.add('hidden');
+
+                if (data.logs.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // Display activities
+                activityContainer.innerHTML = '';
+                data.logs.forEach(log => {
+                    const actionClass = `action-${log.action}`;
+                    const colorClass = getColorClass(log.action_color);
+                    
+                    const logCard = document.createElement('div');
+                    logCard.className = `bg-white border-2 border-gray-100 p-4 hover:shadow-lg transition ${actionClass}`;
+                    logCard.innerHTML = `
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start space-x-3 flex-1">
+                                <div class="p-2 bg-${log.action_color}-100 text-${log.action_color}-600">
+                                    <i class="${log.action_icon} text-xl"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2 mb-1">
+                                        <span class="px-2 py-1 text-xs font-bold ${colorClass} text-white">
+                                            ${log.action_display}
+                                        </span>
+                                        <span class="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700">
+                                            ${log.entity_type_display}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-800 font-semibold mb-1">${log.description}</p>
+                                    ${log.entity_name ? `<p class="text-sm text-gray-600 mb-2"><i class="ri-file-text-line mr-1"></i>${log.entity_name}</p>` : ''}
+                                    <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                                        <span><i class="ri-user-line mr-1"></i>${log.performed_by}</span>
+                                        <span><i class="ri-time-line mr-1"></i>${log.created_at_readable}</span>
+                                        ${log.ip_address ? `<span><i class="ri-map-pin-line mr-1"></i>${log.ip_address}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    activityContainer.appendChild(logCard);
+                });
+
+                activityContainer.classList.remove('hidden');
+
+                // Update pagination
+                if (data.pagination.total_pages > 1) {
+                    document.getElementById('currentPage').textContent = data.pagination.current_page;
+                    document.getElementById('totalPages').textContent = data.pagination.total_pages;
+                    document.getElementById('totalRecords').textContent = data.pagination.total_count;
+                    
+                    const prevBtn = document.getElementById('prevPage');
+                    const nextBtn = document.getElementById('nextPage');
+                    
+                    prevBtn.disabled = !data.pagination.has_previous;
+                    nextBtn.disabled = !data.pagination.has_next;
+                    
+                    paginationContainer.classList.remove('hidden');
+                } else {
+                    document.getElementById('totalRecords').textContent = data.pagination.total_count;
+                }
+
+                currentPage = data.pagination.current_page;
+
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        function getColorClass(color) {
+            const colorMap = {
+                'green': 'gradient-green',
+                'blue': 'gradient-blue',
+                'red': 'gradient-red',
+                'purple': 'gradient-purple',
+                'gray': 'bg-gray-500'
+            };
+            return colorMap[color] || 'bg-gray-500';
+        }
+
+        // Event Listeners
+        document.getElementById('applyFilters').addEventListener('click', () => {
+            currentPage = 1;
+            loadActivities(currentPage);
+        });
+
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            document.getElementById('actionFilter').value = '';
+            document.getElementById('entityFilter').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            document.getElementById('searchInput').value = '';
+            currentPage = 1;
+            loadActivities(currentPage);
+        });
+
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) {
+                loadActivities(currentPage - 1);
+            }
+        });
+
+        document.getElementById('nextPage').addEventListener('click', () => {
+            loadActivities(currentPage + 1);
+        });
+
+        // Search on Enter
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentPage = 1;
+                loadActivities(currentPage);
+            }
+        });
+
+        // Initial Load
+        loadStats();
+        loadActivities(currentPage);
+    </script>
+
+</body>
+</html>

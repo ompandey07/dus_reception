@@ -63,3 +63,97 @@ class Booking(models.Model):
         from django.core.exceptions import ValidationError
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError('End time must be after start time.')
+        
+
+
+
+
+class ActivityLog(models.Model):
+    """
+    Activity Log model to track all actions in the system
+    """
+    ACTION_CHOICES = [
+        ('create', 'Created'),
+        ('update', 'Updated'),
+        ('delete', 'Deleted'),
+        ('login', 'Logged In'),
+        ('logout', 'Logged Out'),
+    ]
+    
+    ENTITY_CHOICES = [
+        ('booking', 'Booking'),
+        ('user', 'User'),
+        ('custom_user', 'Custom User'),
+        ('system', 'System'),
+    ]
+    
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    entity_type = models.CharField(max_length=50, choices=ENTITY_CHOICES)
+    entity_id = models.IntegerField(null=True, blank=True)
+    entity_name = models.CharField(max_length=255, blank=True)
+    description = models.TextField()
+    
+    # Track who performed this action
+    performed_by_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activities_performed'
+    )
+    performed_by_custom = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activities_performed'
+    )
+    
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'activity_logs'
+        ordering = ['-created_at']
+        verbose_name = 'Activity Log'
+        verbose_name_plural = 'Activity Logs'
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['action']),
+            models.Index(fields=['entity_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_performer_name()} {self.get_action_display()} {self.entity_type} - {self.created_at}"
+    
+    def get_performer_name(self):
+        """Get the name of who performed this action"""
+        if self.performed_by_user:
+            return f"{self.performed_by_user.get_full_name() or self.performed_by_user.username} (Admin)"
+        elif self.performed_by_custom:
+            return f"{self.performed_by_custom.full_name} (User)"
+        return "System"
+    
+    def get_action_icon(self):
+        """Return appropriate icon for the action"""
+        icons = {
+            'create': 'ri-add-circle-line',
+            'update': 'ri-edit-line',
+            'delete': 'ri-delete-bin-line',
+            'login': 'ri-login-box-line',
+            'logout': 'ri-logout-box-line',
+        }
+        return icons.get(self.action, 'ri-information-line')
+    
+    def get_action_color(self):
+        """Return appropriate color class for the action"""
+        colors = {
+            'create': 'green',
+            'update': 'blue',
+            'delete': 'red',
+            'login': 'purple',
+            'logout': 'gray',
+        }
+        return colors.get(self.action, 'gray')

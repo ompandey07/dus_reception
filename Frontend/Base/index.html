@@ -6,14 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dus Reception And Events</title>
     <link rel="icon" type="image/png" href="{% static 'Logo/Logo.png' %}">
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -25,7 +18,6 @@
         
         body {
             font-family: 'Playfair Display', serif;
-            overflow-x: hidden;
             background: white;
         }
         
@@ -33,7 +25,13 @@
             font-family: 'Dancing Script', cursive;
         }
         
-        /* Preloader Styles */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         #preloader {
             position: fixed;
             top: 0;
@@ -46,360 +44,145 @@
             align-items: center;
             z-index: 9999;
         }
-        
+
         .loader-content {
             text-align: center;
         }
-        
+
         .loader-logo {
             width: 150px;
             height: 150px;
-            margin: 0 auto;
-            opacity: 0;
-            position: relative;
+            margin: 0 auto 30px;
         }
-        
+
         .loader-logo img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            animation: spin 2s linear infinite;
         }
-        
-        .pulse-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 150px;
-            height: 150px;
-            border: 3px solid #667eea;
-            border-radius: 50%;
-            opacity: 0;
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        
+
         .loader-text {
-            margin-top: 30px;
-            font-size: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            opacity: 0;
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 20px;
         }
-        
-        .loader-subtext {
-            margin-top: 10px;
-            font-size: 1rem;
-            color: #666;
-            opacity: 0;
+
+        .main-content {
+            display: none;
         }
-        
-        /* Hero Section */
-        .hero-section {
-            min-height: 100vh;
-            background: white;
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-        }
-        
-        /* Curtain Effect */
-        .curtain {
-            position: fixed;
-            background: black;
-            z-index: 8000;
-            opacity: 0;
-        }
-        
-        .curtain-left {
-            top: 0;
-            left: 0;
-            width: 50%;
-            height: 100%;
-        }
-        
-        .curtain-right {
-            top: 0;
-            right: 0;
-            width: 50%;
-            height: 100%;
-        }
-        
-        .curtain-top {
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 50%;
-        }
-        
-        .curtain-bottom {
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 50%;
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .floating-elements {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            opacity: 0.08;
-        }
-        
-        .floating-shape {
-            position: absolute;
-            opacity: 0.4;
-        }
-        
-        .circle-1 {
-            width: 400px;
-            height: 400px;
-            border: 2px solid #667eea;
-            border-radius: 50%;
-            top: 5%;
-            right: 5%;
-            animation: float1 25s infinite ease-in-out;
-        }
-        
-        .circle-2 {
-            width: 300px;
-            height: 300px;
-            border: 2px solid #764ba2;
-            border-radius: 50%;
-            bottom: 10%;
-            left: 10%;
-            animation: float2 20s infinite ease-in-out;
-        }
-        
-        .circle-3 {
-            width: 200px;
-            height: 200px;
-            border: 2px solid #667eea;
-            border-radius: 50%;
-            top: 50%;
-            left: 5%;
-            animation: float3 22s infinite ease-in-out;
-        }
-        
-        @keyframes float1 {
-            0%, 100% { transform: translate(0, 0); }
-            50% { transform: translate(-30px, 30px); }
-        }
-        
-        @keyframes float2 {
-            0%, 100% { transform: translate(0, 0); }
-            50% { transform: translate(40px, -30px); }
-        }
-        
-        @keyframes float3 {
-            0%, 100% { transform: translate(0, 0); }
-            50% { transform: translate(-25px, -25px); }
-        }
-        
-        .navbar {
-            opacity: 0;
-        }
-        
-        .hero-content {
-            opacity: 0;
-        }
-        
-        .hero-logo {
-            opacity: 0;
-        }
-        
-        .login-btn-hero {
-            opacity: 0;
+
+        .main-content.loaded {
+            display: flex;
         }
     </style>
 </head>
 <body>
-    <!-- Curtain Effect -->
-    <div class="curtain curtain-left"></div>
-    <div class="curtain curtain-right"></div>
-    <div class="curtain curtain-top"></div>
-    <div class="curtain curtain-bottom"></div>
-
     <!-- Preloader -->
     <div id="preloader">
         <div class="loader-content">
             <div class="loader-logo">
-                <div class="pulse-ring"></div>
-                <div class="pulse-ring"></div>
-                <div class="pulse-ring"></div>
                 <img src="{% static 'Logo/Logo.png' %}" alt="Logo">
             </div>
-            <h2 class="cursive-font loader-text">Dus Reception And Events</h2>
-            <p class="loader-subtext">Creating Unforgettable Moments</p>
+            <p class="loader-text">Loading...</p>
         </div>
     </div>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <!-- Floating Background Elements -->
-        <div class="floating-elements">
-            <div class="floating-shape circle-1"></div>
-            <div class="floating-shape circle-2"></div>
-            <div class="floating-shape circle-3"></div>
-        </div>
-        
+    <!-- Main Content -->
+    <section class="main-content min-h-screen bg-white flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-20">
+        <div class="max-w-5xl w-full text-center">
+            <!-- Logo -->
+            <div class="mb-8 sm:mb-16">
+                <img src="{% static 'Logo/Logo.png' %}" alt="Dus Logo" class="w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 mx-auto object-contain">
+            </div>
+            
+            <!-- Main Heading -->
+            <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold gradient-text mb-6 sm:mb-8 cursive-font leading-tight">
+                Dus Reception And Events
+            </h1>
+            
+            <!-- Subtitle -->
+            <p class="text-lg sm:text-xl md:text-2xl lg:text-3xl text-gray-600 mb-10 sm:mb-16 max-w-3xl mx-auto leading-relaxed font-light px-2">
+                Creating extraordinary celebrations and unforgettable memories for your special moments
+            </p>
 
-        <!-- Hero Content -->
-        <div class="hero-content relative z-10 flex flex-col items-center justify-center px-6 py-20 text-center min-h-[calc(100vh-100px)]">
-            <div class="max-w-5xl">
-                <!-- Large Logo -->
-                <div class="hero-logo mb-16">
-                    <img src="{% static 'Logo/Logo.png' %}" alt="Dus Logo" class="w-80 h-80 mx-auto object-contain filter drop-shadow-2xl">
-                </div>
-                
-                <!-- Main Heading -->
-                <h2 class="text-6xl md:text-8xl font-bold gradient-text mb-8 cursive-font leading-tight">
-                    Dus Reception And Events
-                </h2>
-                
-                <p class="text-2xl md:text-3xl text-gray-600 mb-16 max-w-3xl mx-auto leading-relaxed font-light">
-                    Creating extraordinary celebrations and unforgettable memories for your special moments
-                </p>
-                
-                <!-- Login Button -->
-                <div class="login-btn-hero">
-                    <a href="{% url "login" %}" class="inline-flex items-center space-x-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white px-12 py-5 rounded-full text-xl font-semibold hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                        <span>Login to Your Account</span>
-                    </a>
-                </div>
+            <!-- Event Type Selection -->
+            <div class="mb-10 sm:mb-16 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto px-2">
+                <button class="event-type-btn bg-gradient-to-r from-purple-100 to-purple-50 hover:from-purple-200 hover:to-purple-100 text-purple-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="wedding">
+                    💒 Wedding
+                </button>
+                <button class="event-type-btn bg-gradient-to-r from-pink-100 to-pink-50 hover:from-pink-200 hover:to-pink-100 text-pink-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="engagement">
+                    💍 Engagement
+                </button>
+                <button class="event-type-btn bg-gradient-to-r from-blue-100 to-blue-50 hover:from-blue-200 hover:to-blue-100 text-blue-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="birthday">
+                    🎂 Birthday
+                </button>
+                <button class="event-type-btn bg-gradient-to-r from-yellow-100 to-yellow-50 hover:from-yellow-200 hover:to-yellow-100 text-yellow-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="anniversary">
+                    🎉 Anniversary
+                </button>
+                <button class="event-type-btn bg-gradient-to-r from-green-100 to-green-50 hover:from-green-200 hover:to-green-100 text-green-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="corporate">
+                    🏢 Corporate
+                </button>
+                <button class="event-type-btn bg-gradient-to-r from-orange-100 to-orange-50 hover:from-orange-200 hover:to-orange-100 text-orange-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base transition-all" data-type="other">
+                    ✨ Other
+                </button>
+            </div>
+
+            <!-- Selected Event Type Display -->
+            <div id="selected-type" class="mb-8 sm:mb-12 text-center">
+                <p class="text-gray-500 text-sm sm:text-base">Select an event type to continue</p>
+            </div>
+            
+            <!-- Login Button -->
+            <div>
+                <a href="{% url "login" %}" class="inline-flex items-center justify-center space-x-2 sm:space-x-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white px-6 sm:px-12 py-3 sm:py-5 rounded-full text-base sm:text-lg lg:text-xl font-semibold hover:shadow-2xl transition-all duration-300 hover:scale-105 w-full sm:w-auto max-w-sm">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                    <span>Login to Continue</span>
+                </a>
             </div>
         </div>
     </section>
 
     <script>
-        // GSAP Animations
         window.addEventListener('load', function() {
-            const tl = gsap.timeline();
-            
-            // Preloader Animation - Professional and elegant
-            tl.to('.loader-logo', {
-                opacity: 1,
-                scale: 1.1,
-                duration: 1,
-                ease: 'power2.out'
-            })
-            .to('.pulse-ring', {
-                opacity: 0.6,
-                scale: 1.5,
-                duration: 1.5,
-                stagger: 0.3,
-                repeat: 1,
-                ease: 'power2.out'
-            }, '-=0.8')
-            .to('.loader-logo', {
-                scale: 1,
-                duration: 0.5,
-                ease: 'power2.inOut'
-            }, '-=0.5')
-            .to('.loader-text', {
-                opacity: 1,
-                y: -10,
-                duration: 0.8,
-                ease: 'power2.out'
-            }, '-=0.3')
-            .to('.loader-subtext', {
-                opacity: 1,
-                duration: 0.6,
-                ease: 'power2.out'
-            }, '-=0.4')
-            .to('.pulse-ring', {
-                opacity: 0,
-                scale: 2,
-                duration: 0.8,
-                ease: 'power2.in'
-            }, '+=0.5')
-            .to('#preloader', {
-                opacity: 0,
-                duration: 0.8,
-                ease: 'power2.inOut',
-                onComplete: function() {
-                    document.getElementById('preloader').style.display = 'none';
-                }
-            });
-            
-            // Show hero section first
-            tl.to('.hero-section', {
-                opacity: 1,
-                duration: 0.1
-            }, '-=0.8')
-            
-            // Then show curtains
-            .to('.curtain', {
-                opacity: 1,
-                duration: 0.1
-            })
-            
-            // Curtain Effect - Black curtains fade and slide from all sides
-            .to('.curtain-left', {
-                x: '-100%',
-                duration: 1.5,
-                ease: 'power3.inOut'
-            })
-            .to('.curtain-right', {
-                x: '100%',
-                duration: 1.5,
-                ease: 'power3.inOut'
-            }, '-=1.5')
-            .to('.curtain-top', {
-                y: '-100%',
-                duration: 1.5,
-                ease: 'power3.inOut'
-            }, '-=1.5')
-            .to('.curtain-bottom', {
-                y: '100%',
-                duration: 1.5,
-                ease: 'power3.inOut'
-            }, '-=1.5');
-            
-            // Hero Content Animation with smooth fade
-            tl.to('.navbar', {
-                opacity: 1,
-                y: 0,
-                duration: 1,
-                ease: 'power2.out'
-            }, '-=0.8')
-            .to('.hero-logo', {
-                opacity: 1,
-                scale: 1,
-                duration: 1.2,
-                ease: 'power2.out'
-            }, '-=0.6')
-            .to('.hero-content', {
-                opacity: 1,
-                y: 0,
-                duration: 1,
-                ease: 'power2.out'
-            }, '-=0.8')
-            .to('.login-btn-hero', {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: 'back.out(1.5)'
-            }, '-=0.4');
-            
-            // Continuous floating animation for hero logo
-            gsap.to('.hero-logo img', {
-                y: -15,
-                duration: 3,
-                repeat: -1,
-                yoyo: true,
-                ease: 'sine.inOut'
+            setTimeout(function() {
+                document.getElementById('preloader').style.display = 'none';
+                document.querySelector('.main-content').classList.add('loaded');
+            }, 2000);
+        });
+
+        const eventTypes = {
+            wedding: '💒 Wedding',
+            engagement: '💍 Engagement',
+            birthday: '🎂 Birthday',
+            anniversary: '🎉 Anniversary',
+            corporate: '🏢 Corporate',
+            other: '✨ Other'
+        };
+
+        let selectedType = null;
+
+        document.querySelectorAll('.event-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.event-type-btn').forEach(b => {
+                    b.classList.remove('ring-2', 'ring-offset-2');
+                });
+                
+                // Add active class to clicked button
+                this.classList.add('ring-2', 'ring-offset-2');
+                
+                selectedType = this.dataset.type;
+                document.getElementById('selected-type').innerHTML = 
+                    `<p class="text-purple-600 font-semibold text-sm sm:text-base">Selected: ${eventTypes[selectedType]}</p>`;
             });
         });
     </script>
