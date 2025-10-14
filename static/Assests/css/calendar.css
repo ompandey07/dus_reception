@@ -115,7 +115,8 @@
 
 .input-field:focus {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+    box-shadow: 0 4px 12px rgba(218, 165, 32, 0.15);
+    border-color: #DAA520;
 }
 
 /* Top Bar Preloader */
@@ -125,14 +126,14 @@
     left: 0;
     width: 100%;
     height: 3px;
-    background: rgba(168, 85, 247, 0.1);
+    background: rgba(218, 165, 32, 0.1);
     overflow: hidden;
     z-index: 9999;
 }
 
 .top-bar-preloader-progress {
     height: 100%;
-    background: linear-gradient(90deg, #a855f7, #ec4899, #a855f7);
+    background: linear-gradient(90deg, #DAA520, #FFD700, #DAA520);
     background-size: 200% 100%;
     width: 40%;
     animation: progressBar 1.5s ease-in-out infinite;
@@ -142,7 +143,7 @@
     animation: fadeOut 0.5s ease-out forwards;
 }
 
-/* Modal Animations - FIXED */
+/* Modal Animations */
 .modal-backdrop {
     animation: modalFadeIn 0.3s ease-out;
 }
@@ -181,7 +182,7 @@
     overflow-x: auto;
 }
 
-/* Calendar Grid - PROPER GRID LAYOUT */
+/* Calendar Grid */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -193,7 +194,7 @@
 }
 
 .calendar-header {
-    background: linear-gradient(135deg, #a855f7, #6366f1);
+    background: linear-gradient(135deg, #DAA520, #FFD700);
     color: white;
     padding: 12px 8px;
     text-align: center;
@@ -219,7 +220,7 @@
 .calendar-day:hover {
     background: #f3f4f6;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.2);
+    box-shadow: 0 4px 12px rgba(218, 165, 32, 0.2);
     z-index: 10;
 }
 
@@ -234,11 +235,7 @@
 
 .calendar-day.today {
     background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border: 2px solid #f59e0b;
-}
-
-.calendar-day.has-booking {
-    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+    border: 2px solid #DAA520;
 }
 
 .calendar-day.has-booking::before {
@@ -248,8 +245,16 @@
     right: 6px;
     width: 10px;
     height: 10px;
-    background: #7c3aed;
+    background: #DAA520;
     animation: pulse 2s infinite;
+}
+
+.calendar-day.half-booked {
+    background: linear-gradient(to bottom, #FFFACD 50%, white 50%);
+}
+
+.calendar-day.full-booked {
+    background: linear-gradient(135deg, #FFFACD, #FFE4B5);
 }
 
 .day-number {
@@ -262,7 +267,7 @@
 
 .day-nepali {
     font-size: 11px;
-    color: #7c3aed;
+    color: #DAA520;
     font-weight: 600;
     margin-bottom: 8px;
     white-space: nowrap;
@@ -280,9 +285,9 @@
 
 .day-event {
     font-size: 11px;
-    color: #4f46e5;
+    color: #B8860B;
     padding: 4px 6px;
-    background: rgba(99, 102, 241, 0.15);
+    background: rgba(218, 165, 32, 0.15);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -291,17 +296,17 @@
 
 .day-event-more {
     font-size: 10px;
-    color: #7c3aed;
+    color: #DAA520;
     font-weight: 700;
     padding: 2px 6px;
-    background: rgba(124, 58, 237, 0.1);
+    background: rgba(218, 165, 32, 0.1);
     text-align: center;
 }
 
 /* Booking Card */
 .booking-card {
     background: white;
-    border-left: 4px solid #7c3aed;
+    border-left: 4px solid #DAA520;
     padding: 16px;
     transition: all 0.2s ease;
     cursor: pointer;
@@ -330,7 +335,7 @@
 
 .booking-time {
     font-size: 13px;
-    color: #6366f1;
+    color: #FFD700;
     font-weight: 600;
     white-space: nowrap;
     margin-left: 8px;
@@ -370,22 +375,22 @@
 }
 
 .btn-view {
-    background: #8b5cf6;
+    background: #DAA520;
     color: white;
 }
 
 .btn-view:hover {
-    background: #7c3aed;
+    background: #B8860B;
     transform: translateY(-2px);
 }
 
 .btn-edit {
-    background: #3b82f6;
+    background: #FFD700;
     color: white;
 }
 
 .btn-edit:hover {
-    background: #2563eb;
+    background: #DAA520;
     transform: translateY(-2px);
 }
 
@@ -410,7 +415,7 @@
 .detail-item {
     background: #f9fafb;
     padding: 12px;
-    border-left: 3px solid #a855f7;
+    border-left: 3px solid #DAA520;
 }
 
 .detail-label {
@@ -429,31 +434,31 @@
 }
 
 .detail-value.nepali {
-    color: #7c3aed;
+    color: #DAA520;
     font-size: 14px;
 }
 
-/* Add Booking Button - FIXED */
+/* Add Booking Button */
 .add-booking-btn {
     position: fixed;
     bottom: 24px;
     right: 24px;
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #a855f7, #6366f1);
+    background: linear-gradient(135deg, #DAA520, #FFD700);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.4);
+    box-shadow: 0 8px 24px rgba(218, 165, 32, 0.4);
     transition: all 0.3s ease;
     z-index: 999;
 }
 
 .add-booking-btn:hover {
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 12px 32px rgba(168, 85, 247, 0.6);
+    box-shadow: 0 12px 32px rgba(218, 165, 32, 0.6);
 }
 
 /* Responsive Design */

@@ -21,7 +21,9 @@
             <div class="w-full max-w-md">
                 <div class="text-center mb-6 sm:mb-8">
                     <div class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 mb-4 bg-gradient-to-br from-purple-500 to-indigo-600 p-3">
-                        <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="w-full h-full object-cover">
+                        <a href="{% url "admin_dashboard" %}">
+                            <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="w-full h-full object-cover">
+                        </a>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">User Registration</h1>
                     <p class="text-gray-600 text-xs sm:text-sm">Create and manage user accounts</p>

@@ -240,6 +240,11 @@ def create_booking(request):
         if end_time <= start_time:
             return JsonResponse({'error': 'End time must be after start time'}, status=400)
         
+        # Check booking limit
+        bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
+        if bookings_on_date >= 2:
+            return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
+        
         # Create booking
         booking = Booking.objects.create(
             client_name=data['client_name'],
@@ -287,7 +292,12 @@ def update_booking(request, booking_id):
         if 'client_name' in data:
             booking.client_name = data['client_name']
         if 'booking_date' in data:
-            booking.booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+            new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+            if new_date != booking.booking_date:
+                count = Booking.objects.filter(booking_date=new_date).count()
+                if count >= 2:
+                    return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
+            booking.booking_date = new_date
         if 'start_time' in data:
             booking.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
         if 'end_time' in data:

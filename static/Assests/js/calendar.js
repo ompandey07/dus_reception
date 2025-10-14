@@ -211,11 +211,14 @@ function renderCalendar() {
         
         const dayBookings = allBookings.filter(b => b.booking_date === localDateStr);
         const hasBooking = dayBookings.length > 0;
+        const bookingCount = dayBookings.length;
         
         let classes = 'calendar-day';
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
         if (hasBooking) classes += ' has-booking';
+        if (bookingCount === 1) classes += ' half-booked';
+        else if (bookingCount === 2) classes += ' full-booked';
         
         calendarHTML += `
             <div class="${classes}" onclick="handleDateClick('${localDateStr}')">
@@ -372,7 +375,11 @@ async function viewBookingDetail(bookingId) {
         if (response.ok) {
             const data = await response.json();
             const booking = data.booking;
+            selectedDate = booking.booking_date;
+            const dayBookings = allBookings.filter(b => b.booking_date === selectedDate);
+            const bookingCount = dayBookings.length;
             openDetailModal(booking);
+            document.getElementById('addInViewButton').style.display = (bookingCount < 2) ? 'block' : 'none';
         } else {
             showToast('Failed to load booking details', 'error');
         }
@@ -551,6 +558,8 @@ function openDateBookingsModal(dateStr, bookings) {
         </div>
     `).join('');
     
+    document.getElementById('addInViewButton').style.display = (bookings.length < 2) ? 'block' : 'none';
+    
     // Properly show modal
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -577,6 +586,9 @@ function escapeHtml(text) {
 }
 
 function openAddModal(dateStr = null) {
+    closeViewModal();
+    closeEditModal();
+
     const modal = document.getElementById('addBookingModal');
     const modalContent = modal.querySelector('.modal-content');
     
@@ -654,6 +666,7 @@ async function editBooking(bookingId) {
     const booking = allBookings.find(b => b.id === bookingId);
     if (!booking) return;
     
+    selectedDate = booking.booking_date;
     closeViewModal();
     
     // Wait for view modal to close
