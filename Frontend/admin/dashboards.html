@@ -14,7 +14,6 @@
     <nav class="bg-white shadow-sm h-16 fixed top-0 left-0 right-0 z-50 border-b border-gray-300">
         <div class="flex items-center justify-between h-full px-4 sm:px-6">
             <div class="flex items-center space-x-4">
-                <!-- Hamburger Menu Button -->
                 <button id="menuToggle" class="lg:hidden text-gray-700 hover:text-gray-900 focus:outline-none">
                     <i class="ri-menu-line text-2xl"></i>
                 </button>
@@ -31,7 +30,6 @@
 
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-white shadow-sm pt-6 border-r border-gray-300 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40">
-        <!-- Close Button (Mobile Only) -->
         <button id="closeMenu" class="lg:hidden absolute top-4 right-4 text-gray-700 hover:text-gray-900 focus:outline-none">
             <i class="ri-close-line text-2xl"></i>
         </button>
@@ -41,11 +39,11 @@
                 <i class="ri-dashboard-line text-xl"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="{% url "user_register" %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
+            <a href="{% url 'user_register' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
                 <i class="ri-user-line text-xl"></i>
                 <span>Manage Users</span>
             </a>
-            <a href="#" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
+            <a href="{% url 'calendar_view' %}" class="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition rounded">
                 <i class="ri-calendar-line text-xl"></i>
                 <span>Booking Calendar</span>
             </a>
@@ -67,12 +65,12 @@
     <main class="lg:ml-64 mt-16 p-4 sm:p-6">
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            <!-- Recent Bookings Card -->
+            <!-- Total Bookings Card -->
             <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-xs sm:text-sm">Recent Bookings</p>
-                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">248</p>
+                        <p class="text-gray-500 text-xs sm:text-sm">Total Bookings</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">{{ total_bookings }}</p>
                     </div>
                     <div class="bg-blue-100 p-3 sm:p-4 rounded-lg">
                         <i class="ri-calendar-check-line text-3xl sm:text-4xl text-blue-600"></i>
@@ -84,8 +82,8 @@
             <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-xs sm:text-sm">Total Users</p>
-                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">1,542</p>
+                        <p class="text-gray-500 text-xs sm:text-sm">Registered Users</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">{{ total_users }}</p>
                     </div>
                     <div class="bg-purple-100 p-3 sm:p-4 rounded-lg">
                         <i class="ri-group-line text-3xl sm:text-4xl text-purple-600"></i>
@@ -93,12 +91,12 @@
                 </div>
             </div>
 
-            <!-- Revenue Card -->
+            <!-- Total Advance Card -->
             <div class="bg-white shadow-sm p-4 sm:p-6 rounded-lg sm:col-span-2 lg:col-span-1">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-xs sm:text-sm">Advance Collected</p>
-                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">NPR : 45,231</p>
+                        <p class="text-gray-500 text-xs sm:text-sm">Total Advance Collected</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-gray-800 mt-2">NPR {{ total_advance|floatformat:2 }}</p>
                     </div>
                     <div class="bg-green-100 p-3 sm:p-4 rounded-lg">
                         <i class="ri-money-dollar-circle-line text-3xl sm:text-4xl text-green-600"></i>
@@ -109,37 +107,35 @@
 
         <!-- Recent Activity Table -->
         <div class="bg-white shadow-sm p-4 sm:p-6 mt-6 rounded-lg">
-            <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">Recent Bookings</h3>
             <div class="overflow-x-auto -mx-4 sm:mx-0">
                 <div class="inline-block min-w-full align-middle">
                     <table class="min-w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">User</th>
-                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Action</th>
-                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 hidden sm:table-cell">Date</th>
-                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Status</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Client Name</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Event Type</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 hidden sm:table-cell">Booking Date</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Advance</th>
+                                <th class="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700 hidden md:table-cell">Created By</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            <tr>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">John Doe</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">New Booking</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">2 hours ago</td>
-                                <td class="px-3 sm:px-4 py-3"><span class="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full text-xs">Completed</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">Jane Smith</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">Account Created</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">5 hours ago</td>
-                                <td class="px-3 sm:px-4 py-3"><span class="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs">Active</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">Mike Johnson</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">Booking Cancelled</td>
-                                <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">1 day ago</td>
-                                <td class="px-3 sm:px-4 py-3"><span class="bg-red-100 text-red-800 px-2 sm:px-3 py-1 rounded-full text-xs">Cancelled</span></td>
-                            </tr>
+                            {% if recent_bookings %}
+                                {% for booking in recent_bookings %}
+                                <tr>
+                                    <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-800">{{ booking.client_name }}</td>
+                                    <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{{ booking.event_type }}</td>
+                                    <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">{{ booking.booking_date|date:"M d, Y" }}</td>
+                                    <td class="px-3 sm:px-4 py-3"><span class="bg-green-100 text-green-800 px-2 sm:px-3 py-1 rounded-full text-xs">NPR {{ booking.advance_given }}</span></td>
+                                    <td class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden md:table-cell">{{ booking.get_creator_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="px-3 sm:px-4 py-6 text-center text-gray-500">No recent bookings</td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -170,7 +166,6 @@
         closeMenu.addEventListener('click', closeSidebar);
         overlay.addEventListener('click', closeSidebar);
 
-        // Close sidebar when clicking on a menu item (mobile)
         const menuLinks = sidebar.querySelectorAll('a, button[type="submit"]');
         menuLinks.forEach(link => {
             link.addEventListener('click', () => {
@@ -179,26 +174,6 @@
                 }
             });
         });
-
-        // Get CSRF token from cookie
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        // Debug: Log cookies on page load
-        console.log('All cookies:', document.cookie);
-        console.log('Access token:', getCookie('access'));
     </script>
 
 </body>

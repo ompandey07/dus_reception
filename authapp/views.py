@@ -3,10 +3,11 @@ from django.http import JsonResponse
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.views import View
+from django.db.models import Sum, Count
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
-
+from managementapp.models import Booking
 from .models import CustomUser
 
 User = get_user_model()
@@ -93,7 +94,7 @@ class LoginView(View):
                 'success': True,
                 'message': 'Login successful',
                 'user_type': 'admin',
-                'redirect': '/auth/admin/dashboard/'  # Fixed: Added /auth/ prefix
+                'redirect': '/auth/admin/dashboard/'
             })
         else:
             response = redirect('admin_dashboard')
@@ -113,7 +114,7 @@ class LoginView(View):
                 'success': True,
                 'message': 'Login successful',
                 'user_type': 'user',
-                'redirect': '/auth/user/dashboard/',  # Fixed: Added /auth/ prefix
+                'redirect': '/auth/user/dashboard/',
                 'user_data': {
                     'id': custom_user.id,
                     'full_name': custom_user.full_name,
@@ -128,6 +129,8 @@ class LoginView(View):
         response.set_cookie("user_type", 'user', httponly=True, samesite='Lax')
         
         return response
+
+
 # ============================================================
 # UNIFIED LOGOUT VIEW (ONE ROUTE FOR BOTH)
 # ============================================================
@@ -148,7 +151,7 @@ class LogoutView(View):
                     token = RefreshToken(refresh_token)
                     token.blacklist()
                 except TokenError:
-                    pass  # Token already invalid, continue logout
+                    pass
             
             # Prepare response
             if request.content_type == 'application/json':
@@ -211,12 +214,30 @@ class AdminDashboardView(View):
         return super().dispatch(request, *args, **kwargs)
     
     def get(self, request):
+        
         user = request.user
+        
+        # Get statistics for admin (all bookings and users)
+        total_bookings = Booking.objects.count()
+        total_users = CustomUser.objects.count()
+        total_advance = Booking.objects.aggregate(
+            total=Sum('advance_given')
+        )['total'] or 0
+        
+        # Get recent bookings for activity log
+        recent_bookings = Booking.objects.select_related(
+            'created_by_user', 'created_by_custom'
+        ).order_by('-created_at')[:5]
+        
         context = {
             "email": user.email,
             "username": user.username,
             "is_superuser": user.is_superuser,
             "is_staff": user.is_staff,
+            "total_bookings": total_bookings,
+            "total_users": total_users,
+            "total_advance": total_advance,
+            "recent_bookings": recent_bookings,
         }
         return render(request, "admin/dashboards.html", context)
 
@@ -228,6 +249,7 @@ class CustomUserDashboardView(View):
     """Renders dashboard page for authenticated custom users"""
     
     def get(self, request):
+        
         custom_user_id = request.COOKIES.get("custom_user_id")
         user_type = request.COOKIES.get("user_type")
         
@@ -236,11 +258,25 @@ class CustomUserDashboardView(View):
         
         try:
             custom_user = CustomUser.objects.get(id=custom_user_id)
+            
+            # Get statistics for this specific user (only their bookings)
+            user_bookings = Booking.objects.filter(created_by_custom=custom_user)
+            total_bookings = user_bookings.count()
+            total_advance = user_bookings.aggregate(
+                total=Sum('advance_given')
+            )['total'] or 0
+            
+            # Get recent bookings created by this user
+            recent_bookings = user_bookings.order_by('-created_at')[:5]
+            
             context = {
                 "full_name": custom_user.full_name,
                 "email": custom_user.login_email,
                 "created_at": custom_user.created_at,
                 "updated_at": custom_user.updated_at,
+                "total_bookings": total_bookings,
+                "total_advance": total_advance,
+                "recent_bookings": recent_bookings,
             }
             return render(request, "user/user_dashboard.html", context)
         except CustomUser.DoesNotExist:

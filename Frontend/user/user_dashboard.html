@@ -24,7 +24,7 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-purple-50 to-indigo-100 min-h-screen">
-    <div class="max-w-4xl mx-auto p-6">
+    <div class="max-w-6xl mx-auto p-6">
         <!-- Header -->
         <div class="dashboard-card bg-white shadow-xl rounded-2xl p-8 mb-6">
             <div class="flex items-center justify-between">
@@ -51,10 +51,53 @@
             </div>
         </div>
 
-        <!-- User Information Cards -->
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- My Bookings Card -->
+            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <h2 class="text-xl font-semibold text-gray-800">My Bookings</h2>
+                        </div>
+                        <p class="text-4xl font-bold text-blue-600 mt-3">{{ total_bookings }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Total bookings created</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Advance Card -->
+            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" x2="12" y1="2" y2="22"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <h2 class="text-xl font-semibold text-gray-800">Total Advance</h2>
+                        </div>
+                        <p class="text-4xl font-bold text-green-600 mt-3">NPR {{ total_advance|floatformat:2 }}</p>
+                        <p class="text-sm text-gray-500 mt-1">Advance collected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal Information and Account Details -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Personal Information -->
-            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.1s;">
+            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.3s;">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -77,7 +120,7 @@
             </div>
 
             <!-- Account Details -->
-            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.2s;">
+            <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.4s;">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -101,13 +144,54 @@
             </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.3s;">
+        <!-- Recent Bookings -->
+        <div class="dashboard-card bg-white shadow-lg rounded-xl p-6" style="animation-delay: 0.5s;">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">Recent Bookings</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Client Name</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Event Type</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 hidden md:table-cell">Booking Date</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Advance</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% if recent_bookings %}
+                            {% for booking in recent_bookings %}
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-gray-800">{{ booking.client_name }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">{{ booking.event_type }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">{{ booking.booking_date|date:"M d, Y" }}</td>
+                                <td class="px-4 py-3"><span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">NPR {{ booking.advance_given }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="px-4 py-6 text-center text-gray-500">No bookings yet</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Account Status -->
+        <div class="dashboard-card bg-white shadow-lg rounded-xl p-6 mt-6" style="animation-delay: 0.6s;">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" x2="12" y1="2" y2="22"></line>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
                 </div>
                 <h2 class="text-xl font-semibold text-gray-800">Account Status</h2>

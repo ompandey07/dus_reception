@@ -6,12 +6,28 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.db.models import Q
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import json
 import nepali_datetime
 
 from .models import Booking, CustomUser
 
+
+def get_nepali_date(english_date):
+    """Convert English date to Nepali date"""
+    try:
+        nepali_date = nepali_datetime.date.from_datetime_date(english_date)
+        return {
+            'year': nepali_date.year,
+            'month': nepali_date.month,
+            'day': nepali_date.day,
+            'month_name': nepali_date.strftime('%B'),  # Nepali month name
+            'formatted': nepali_date.strftime('%Y-%m-%d'),
+            'formatted_nepali': nepali_date.strftime('%Y %B %d')
+        }
+    except Exception as e:
+        print(f"Error converting date: {e}")
+        return None
 
 
 def calendar_view(request):
@@ -19,16 +35,79 @@ def calendar_view(request):
     # Get all custom users for filter dropdown
     custom_users = CustomUser.objects.all()
     
+    # Get current date info
+    today = date.today()
+    nepali_today = get_nepali_date(today)
+    
     context = {
-        'custom_users': custom_users
+        'custom_users': custom_users,
+        'today_nepali': nepali_today
     }
     return render(request, 'Function/calendar.html', context)
 
 
+@require_http_methods(["GET"])
+def get_calendar_data(request):
+    """API endpoint to get calendar data with Nepali dates"""
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        
+        # Get first and last day of the month
+        first_day = date(year, month, 1)
+        if month == 12:
+            last_day = date(year + 1, 1, 1)
+        else:
+            last_day = date(year, month + 1, 1)
+        
+        # Get all bookings for the month
+        bookings = Booking.objects.filter(
+            booking_date__gte=first_day,
+            booking_date__lt=last_day
+        )
+        
+        # Create calendar data
+        calendar_days = []
+        current_date = first_day
+        
+        while current_date < last_day:
+            nepali_date = get_nepali_date(current_date)
+            day_bookings = bookings.filter(booking_date=current_date)
+            
+            day_data = {
+                'date': current_date.strftime('%Y-%m-%d'),
+                'day': current_date.day,
+                'nepali_date': nepali_date,
+                'is_today': current_date == date.today(),
+                'booking_count': day_bookings.count(),
+                'bookings': []
+            }
+            
+            for booking in day_bookings:
+                day_data['bookings'].append({
+                    'id': booking.id,
+                    'client_name': booking.client_name,
+                    'event_type': booking.event_type,
+                    'start_time': booking.start_time.strftime('%H:%M'),
+                    'end_time': booking.end_time.strftime('%H:%M')
+                })
+            
+            calendar_days.append(day_data)
+            current_date = current_date + timedelta(days=1)
+        
+        return JsonResponse({
+            'calendar_days': calendar_days,
+            'year': year,
+            'month': month
+        }, status=200)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 @require_http_methods(["GET"])
 def get_bookings(request):
-    """API endpoint to get all bookings"""
+    """API endpoint to get all bookings with Nepali dates"""
     try:
         # Get filter parameter
         created_by_filter = request.GET.get('created_by', None)
@@ -46,10 +125,12 @@ def get_bookings(request):
         
         bookings_data = []
         for booking in bookings:
+            nepali_date = get_nepali_date(booking.booking_date)
             bookings_data.append({
                 'id': booking.id,
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
                 'start_time': booking.start_time.strftime('%H:%M'),
                 'end_time': booking.end_time.strftime('%H:%M'),
                 'phone_number': booking.phone_number,
@@ -65,6 +146,39 @@ def get_bookings(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+@require_http_methods(["GET"])
+def get_booking_detail(request, booking_id):
+    """API endpoint to get detailed booking information"""
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        nepali_date = get_nepali_date(booking.booking_date)
+        
+        booking_data = {
+            'id': booking.id,
+            'client_name': booking.client_name,
+            'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+            'booking_date_formatted': booking.booking_date.strftime('%B %d, %Y'),
+            'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
+            'nepali_year': nepali_date['year'] if nepali_date else '',
+            'nepali_month': nepali_date['month_name'] if nepali_date else '',
+            'nepali_day': nepali_date['day'] if nepali_date else '',
+            'start_time': booking.start_time.strftime('%H:%M'),
+            'end_time': booking.end_time.strftime('%H:%M'),
+            'phone_number': booking.phone_number,
+            'email': booking.email or '',
+            'event_type': booking.event_type,
+            'advance_given': str(booking.advance_given),
+            'created_by': booking.get_creator_name(),
+            'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        return JsonResponse({'booking': booking_data}, status=200)
+    
+    except Booking.DoesNotExist:
+        return JsonResponse({'error': 'Booking not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
@@ -73,6 +187,7 @@ def get_bookings_by_date(request, date_str):
     try:
         booking_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         bookings = Booking.objects.filter(booking_date=booking_date)
+        nepali_date = get_nepali_date(booking_date)
         
         bookings_data = []
         for booking in bookings:
@@ -80,6 +195,7 @@ def get_bookings_by_date(request, date_str):
                 'id': booking.id,
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
                 'start_time': booking.start_time.strftime('%H:%M'),
                 'end_time': booking.end_time.strftime('%H:%M'),
                 'phone_number': booking.phone_number,
@@ -90,11 +206,16 @@ def get_bookings_by_date(request, date_str):
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
         
-        return JsonResponse({'bookings': bookings_data}, status=200)
+        return JsonResponse({
+            'bookings': bookings_data,
+            'date_info': {
+                'english': booking_date.strftime('%B %d, %Y'),
+                'nepali': nepali_date['formatted_nepali'] if nepali_date else ''
+            }
+        }, status=200)
     
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 
 @require_http_methods(["POST"])
@@ -132,12 +253,15 @@ def create_booking(request):
             created_by_user=request.user if request.user.is_authenticated else None
         )
         
+        nepali_date = get_nepali_date(booking.booking_date)
+        
         return JsonResponse({
             'message': 'Booking created successfully',
             'booking': {
                 'id': booking.id,
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
                 'start_time': booking.start_time.strftime('%H:%M'),
                 'end_time': booking.end_time.strftime('%H:%M'),
                 'phone_number': booking.phone_number,
@@ -150,7 +274,6 @@ def create_booking(request):
     
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 
 @require_http_methods(["PUT"])
@@ -184,12 +307,15 @@ def update_booking(request, booking_id):
         
         booking.save()
         
+        nepali_date = get_nepali_date(booking.booking_date)
+        
         return JsonResponse({
             'message': 'Booking updated successfully',
             'booking': {
                 'id': booking.id,
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
                 'start_time': booking.start_time.strftime('%H:%M'),
                 'end_time': booking.end_time.strftime('%H:%M'),
                 'phone_number': booking.phone_number,
@@ -204,7 +330,6 @@ def update_booking(request, booking_id):
         return JsonResponse({'error': 'Booking not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 
 @require_http_methods(["DELETE"])
