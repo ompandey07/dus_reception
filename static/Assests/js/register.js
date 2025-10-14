@@ -276,7 +276,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     buttonText.textContent = 'Registering...';
     
     try {
-        const response = await fetch("/auth/user/register/", {
+        const response = await fetch("/auth/register/", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
