@@ -9,7 +9,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = 'django-insecure-0(0o1*codxcz1!3-@by$@=+9phj!#5tof2_kt=aoc+*+g*arsg'
 
 DEBUG = True
 
@@ -17,14 +17,15 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    '192.168.101.24'    
+    'http://www.dusreception.com',
+    'www.dusreception.com'    
 ]
 
 # CSRF TRUSTED_ORIGINS SETTING
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    'http://192.168.101.24:8000/'    
+    'http://www.dusreception.com/',
 ]
 
 
@@ -64,31 +65,7 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# JAZZMIN CONFIGURATION
-JAZZMIN_SETTINGS = {
-    # TITLE & BRANDING
-    "site_title": "MSS Admin",
-    "site_header": "MSS Admin Dashboard",
-    "site_brand": "MSS Admin",
-    "welcome_sign": "Welcome to MSS Admin",
 
-    # UI/UX
-    "show_sidebar": True,
-    "navigation_expanded": True,
-    "show_ui_builder": True,       
-    "changeform_format": "horizontal_tabs",
-
-    # TOP MENU LINKS
-    "topmenu_links": [
-        {"name": "Home", "url": "/", "permissions": ["auth.view_user"]},
-        {"name": "Support", "url": "https://www.megaminds.com.np/", "new_window": True},
-        {"name": "Developer", "url": "https://www.omkumarpandey.com.np/", "new_window": True},
-    ],
-
-    # SIDEBAR CONFIGURATION
-    "show_sidebar_icons": False,     
-    "related_modal_active": True,    
-}
 
 
 # CORS SETTINGS
@@ -131,15 +108,19 @@ WSGI_APPLICATION = 'dus_reception.wsgi.application'
 # DATABASE CONFIGURATION
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
-        'AUTOCOMMIT': True,
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'dusrecep_dus',
+        'USER': 'dusrecep_nhuja',
+        'PASSWORD': 'admin@1200',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
+
+
 
 
 
@@ -202,21 +183,3 @@ DATABASES['default']['CONN_MAX_AGE'] = 60
 
 
 
-# EMAIL CONFIGURATION
-# ----------------------------------------
-EMAIL_BACKEND = config('EMAIL_BACKEND')
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_PORT = config('EMAIL_PORT', cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-
-# COMPANY EMAIL SETTINGS
-DEFAULT_FROM_EMAIL = f'MEGA MINDS PVT LTD <{config("EMAIL_HOST_USER")}>'
-SERVER_EMAIL = f'MEGA MINDS PVT LTD <{config("EMAIL_HOST_USER")}>'
-EMAIL_USE_LOCALTIME = True
-ADMINS = [('MEGA MINDS PVT LTD', config('EMAIL_HOST_USER'))]
-MANAGERS = ADMINS
-SUPPORT_EMAIL = config('EMAIL_HOST_USER')
-COMPANY_WEBSITE = 'https://www.megaminds.com.np/'
-LOGIN_URL = 'https://www.megaminds.com.np/login'
