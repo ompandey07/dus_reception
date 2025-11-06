@@ -14,8 +14,6 @@ window.addEventListener('load', function() {
     loadBookings();
     
     document.getElementById('creatorFilter').addEventListener('change', loadBookings);
-    
-    // Add backdrop click handlers for all modals
     setupModalBackdropHandlers();
 });
 
@@ -143,7 +141,7 @@ async function loadMonthData() {
     }
 }
 
-// Render calendar with backend Nepali dates
+// Render calendar with backend Nepali dates and color coding
 function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -152,7 +150,6 @@ function renderCalendar() {
                        'July', 'August', 'September', 'October', 'November', 'December'];
     document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
     
-    // Display Nepali month if available
     if (currentMonthNepaliData && currentMonthNepaliData.calendar_days.length > 0) {
         const firstDayData = currentMonthNepaliData.calendar_days[0];
         if (firstDayData.nepali_date) {
@@ -200,7 +197,6 @@ function renderCalendar() {
                             String(cellDate.getMonth() + 1).padStart(2, '0') + '-' + 
                             String(cellDate.getDate()).padStart(2, '0');
         
-        // Get Nepali date from backend data
         let nepaliDateDisplay = '';
         if (currentMonthNepaliData && currentMonthNepaliData.calendar_days) {
             const dayData = currentMonthNepaliData.calendar_days.find(d => d.date === localDateStr);
@@ -217,16 +213,32 @@ function renderCalendar() {
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
         if (hasBooking) classes += ' has-booking';
-        if (bookingCount === 1) classes += ' half-booked';
-        else if (bookingCount === 2) classes += ' full-booked';
+        
+        // Build events HTML with color indicators
+        let eventsHTML = '';
+        if (hasBooking) {
+            dayBookings.forEach((booking, idx) => {
+                if (idx < 2) {
+                    eventsHTML += `
+                        <div class="day-event" 
+                             style="border-left: 3px solid ${booking.color}; padding-left: 6px;" 
+                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time})">
+                            ${escapeHtml(booking.client_name)}
+                        </div>
+                    `;
+                }
+            });
+            if (dayBookings.length > 2) {
+                eventsHTML += `<div class="day-event-more">+${dayBookings.length - 2} more</div>`;
+            }
+        }
         
         calendarHTML += `
             <div class="${classes}" onclick="handleDateClick('${localDateStr}')">
                 <div class="day-number">${dayNum}</div>
                 <div class="day-nepali">${nepaliDateDisplay}</div>
                 <div class="day-events">
-                    ${hasBooking ? `<div class="day-event" title="${escapeHtml(dayBookings[0].client_name)} - ${dayBookings[0].event_type}">${escapeHtml(dayBookings[0].client_name)}</div>` : ''}
-                    ${dayBookings.length > 1 ? `<div class="day-event-more">+${dayBookings.length - 1} more</div>` : ''}
+                    ${eventsHTML}
                 </div>
             </div>
         `;
@@ -305,10 +317,10 @@ function renderBookingsList() {
     }
     
     container.innerHTML = upcomingBookings.slice(0, 10).map(booking => `
-        <div class="booking-card">
+        <div class="booking-card" style="border-left: 4px solid ${booking.color}">
             <div class="booking-card-header">
                 <div class="booking-client">${escapeHtml(booking.client_name)}</div>
-                <div class="booking-time">${booking.start_time} - ${booking.end_time}</div>
+                <div class="booking-time" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time}</div>
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -324,7 +336,7 @@ function renderBookingsList() {
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                     <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                ${escapeHtml(booking.event_type)}
+                ${escapeHtml(booking.event_type_display)}
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -399,11 +411,11 @@ function openDetailModal(booking) {
     
     const container = document.getElementById('dateBookingsList');
     container.innerHTML = `
-        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4 border-purple-600">
+        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-6">
                 <div>
                     <h4 class="font-bold text-2xl text-gray-800 mb-2">${escapeHtml(booking.client_name)}</h4>
-                    <p class="text-base text-purple-600 font-semibold">
+                    <p class="text-base font-semibold" style="color: ${booking.color}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
@@ -424,7 +436,7 @@ function openDetailModal(booking) {
                 </div>
                 <div class="detail-item">
                     <p class="detail-label">Event Type</p>
-                    <p class="detail-value">${escapeHtml(booking.event_type)}</p>
+                    <p class="detail-value">${escapeHtml(booking.event_type_display)}</p>
                 </div>
                 <div class="detail-item">
                     <p class="detail-label">Phone Number</p>
@@ -436,15 +448,27 @@ function openDetailModal(booking) {
                     <p class="detail-value">${escapeHtml(booking.email)}</p>
                 </div>
                 ` : ''}
+                ${booking.menu_type ? `
+                <div class="detail-item">
+                    <p class="detail-label">Menu Type</p>
+                    <p class="detail-value">${escapeHtml(booking.menu_type)}</p>
+                </div>
+                ` : ''}
+                ${booking.no_of_packs ? `
+                <div class="detail-item">
+                    <p class="detail-label">No. of Packs</p>
+                    <p class="detail-value">${escapeHtml(booking.no_of_packs)}</p>
+                </div>
+                ` : ''}
                 <div class="detail-item">
                     <p class="detail-label">Advance Given</p>
                     <p class="detail-value">Rs. ${booking.advance_given}</p>
                 </div>
-                <div class="detail-item ${!booking.email ? 'sm:col-span-2' : ''}">
+                <div class="detail-item sm:col-span-2">
                     <p class="detail-label">Created By</p>
                     <p class="detail-value">${escapeHtml(booking.created_by)}</p>
                 </div>
-                <div class="detail-item ${!booking.email ? '' : 'sm:col-span-2'}">
+                <div class="detail-item sm:col-span-2">
                     <p class="detail-label">Created At</p>
                     <p class="detail-value">${booking.created_at}</p>
                 </div>
@@ -469,7 +493,6 @@ function openDetailModal(booking) {
         </div>
     `;
     
-    // Properly show modal
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
     modalContent.classList.remove('closing');
@@ -499,18 +522,18 @@ function openDateBookingsModal(dateStr, bookings) {
     
     const container = document.getElementById('dateBookingsList');
     container.innerHTML = bookings.map(booking => `
-        <div class="bg-gray-50 p-4 border-l-4 border-purple-500">
+        <div class="bg-gray-50 p-4 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-3">
                 <div>
                     <h4 class="font-bold text-lg text-gray-800">${escapeHtml(booking.client_name)}</h4>
-                    <p class="text-sm text-purple-600 font-semibold">${booking.start_time} - ${booking.end_time}</p>
+                    <p class="text-sm font-semibold" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time}</p>
                 </div>
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div>
                     <p class="text-gray-600">Event Type:</p>
-                    <p class="font-semibold text-gray-800">${escapeHtml(booking.event_type)}</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.event_type_display)}</p>
                 </div>
                 <div>
                     <p class="text-gray-600">Phone:</p>
@@ -520,6 +543,18 @@ function openDateBookingsModal(dateStr, bookings) {
                 <div>
                     <p class="text-gray-600">Email:</p>
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.email)}</p>
+                </div>
+                ` : ''}
+                ${booking.menu_type ? `
+                <div>
+                    <p class="text-gray-600">Menu Type:</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.menu_type)}</p>
+                </div>
+                ` : ''}
+                ${booking.no_of_packs ? `
+                <div>
+                    <p class="text-gray-600">No. of Packs:</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_packs)}</p>
                 </div>
                 ` : ''}
                 <div>
@@ -560,7 +595,6 @@ function openDateBookingsModal(dateStr, bookings) {
     
     document.getElementById('addInViewButton').style.display = (bookings.length < 2) ? 'block' : 'none';
     
-    // Properly show modal
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
     modalContent.classList.remove('closing');
@@ -606,7 +640,6 @@ function openAddModal(dateStr = null) {
     document.getElementById('endTime').value = String(endTime.getHours()).padStart(2, '0') + ':' + 
                                                String(endTime.getMinutes()).padStart(2, '0');
     
-    // Properly show modal
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
     modalContent.classList.remove('closing');
@@ -669,7 +702,6 @@ async function editBooking(bookingId) {
     selectedDate = booking.booking_date;
     closeViewModal();
     
-    // Wait for view modal to close
     setTimeout(() => {
         document.getElementById('editBookingId').value = booking.id;
         document.getElementById('editClientName').value = booking.client_name;
@@ -679,12 +711,13 @@ async function editBooking(bookingId) {
         document.getElementById('editPhoneNumber').value = booking.phone_number;
         document.getElementById('editEmail').value = booking.email || '';
         document.getElementById('editEventType').value = booking.event_type;
+        document.getElementById('editMenuType').value = booking.menu_type || '';
+        document.getElementById('editNoOfPacks').value = booking.no_of_packs || '';
         document.getElementById('editAdvanceGiven').value = booking.advance_given;
         
         const modal = document.getElementById('editBookingModal');
         const modalContent = modal.querySelector('.modal-content');
         
-        // Properly show modal
         modal.classList.remove('hidden', 'closing');
         modal.classList.add('flex');
         modalContent.classList.remove('closing');
@@ -733,7 +766,9 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     const endTime = document.getElementById('endTime').value;
     const phoneNumber = document.getElementById('phoneNumber').value.trim();
     const email = document.getElementById('email').value.trim();
-    const eventType = document.getElementById('eventType').value.trim();
+    const eventType = document.getElementById('eventType').value;
+    const menuType = document.getElementById('menuType').value.trim();
+    const noOfPacks = document.getElementById('noOfPacks').value.trim();
     const advanceGiven = document.getElementById('advanceGiven').value || 0;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
@@ -771,6 +806,8 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
                 phone_number: phoneNumber,
                 email: email,
                 event_type: eventType,
+                menu_type: menuType,
+                no_of_packs: noOfPacks,
                 advance_given: advanceGiven
             })
         });
@@ -808,7 +845,9 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     const endTime = document.getElementById('editEndTime').value;
     const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
     const email = document.getElementById('editEmail').value.trim();
-    const eventType = document.getElementById('editEventType').value.trim();
+    const eventType = document.getElementById('editEventType').value;
+    const menuType = document.getElementById('editMenuType').value.trim();
+    const noOfPacks = document.getElementById('editNoOfPacks').value.trim();
     const advanceGiven = document.getElementById('editAdvanceGiven').value || 0;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
@@ -846,6 +885,8 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
                 phone_number: phoneNumber,
                 email: email,
                 event_type: eventType,
+                menu_type: menuType,
+                no_of_packs: noOfPacks,
                 advance_given: advanceGiven
             })
         });

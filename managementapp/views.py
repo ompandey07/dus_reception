@@ -48,7 +48,6 @@ def log_activity(action, entity_type, entity_id=None, entity_name='', descriptio
             user_agent=user_agent
         )
     except Exception as e:
-        # Silent fail - don't break main functionality if logging fails
         print(f"Activity logging error: {e}")
 
 
@@ -63,7 +62,7 @@ def get_nepali_date(english_date):
             'year': nepali_date.year,
             'month': nepali_date.month,
             'day': nepali_date.day,
-            'month_name': nepali_date.strftime('%B'),  # Nepali month name
+            'month_name': nepali_date.strftime('%B'),
             'formatted': nepali_date.strftime('%Y-%m-%d'),
             'formatted_nepali': nepali_date.strftime('%Y %B %d')
         }
@@ -78,16 +77,17 @@ def get_nepali_date(english_date):
 @login_required_dual(login_url='/unauthorized/')
 def calendar_view(request):
     """Render the calendar booking page"""
-    # Get all custom users for filter dropdown
     custom_users = CustomUser.objects.all()
-    
-    # Get current date info
     today = date.today()
     nepali_today = get_nepali_date(today)
     
+    # Get event type choices for dropdown
+    event_types = Booking.EVENT_TYPE_CHOICES
+    
     context = {
         'custom_users': custom_users,
-        'today_nepali': nepali_today
+        'today_nepali': nepali_today,
+        'event_types': event_types
     }
     return render(request, 'Function/calendar.html', context)
 
@@ -100,20 +100,17 @@ def get_calendar_data(request):
         year = int(request.GET.get('year', datetime.now().year))
         month = int(request.GET.get('month', datetime.now().month))
         
-        # Get first and last day of the month
         first_day = date(year, month, 1)
         if month == 12:
             last_day = date(year + 1, 1, 1)
         else:
             last_day = date(year, month + 1, 1)
         
-        # Get all bookings for the month
         bookings = Booking.objects.filter(
             booking_date__gte=first_day,
             booking_date__lt=last_day
         )
         
-        # Create calendar data
         calendar_days = []
         current_date = first_day
         
@@ -134,9 +131,10 @@ def get_calendar_data(request):
                 day_data['bookings'].append({
                     'id': booking.id,
                     'client_name': booking.client_name,
-                    'event_type': booking.event_type,
+                    'event_type': booking.get_event_type_display(),
                     'start_time': booking.start_time.strftime('%H:%M'),
-                    'end_time': booking.end_time.strftime('%H:%M')
+                    'end_time': booking.end_time.strftime('%H:%M'),
+                    'color': booking.get_time_color()
                 })
             
             calendar_days.append(day_data)
@@ -152,20 +150,14 @@ def get_calendar_data(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-# ============================================================
-# BOOKING VIEWS
-# ============================================================
 @login_required_dual(login_url='/unauthorized/')
 @require_http_methods(["GET"])
 def get_bookings(request):
     """API endpoint to get all bookings with Nepali dates"""
     try:
-        # Get filter parameter
         created_by_filter = request.GET.get('created_by', None)
-        
         bookings = Booking.objects.all()
         
-        # Apply filter if provided
         if created_by_filter:
             if created_by_filter.startswith('user_'):
                 user_id = created_by_filter.replace('user_', '')
@@ -187,7 +179,11 @@ def get_bookings(request):
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
+                'event_type_display': booking.get_event_type_display(),
+                'menu_type': booking.menu_type or '',
+                'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
+                'color': booking.get_time_color(),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -220,12 +216,243 @@ def get_booking_detail(request, booking_id):
             'phone_number': booking.phone_number,
             'email': booking.email or '',
             'event_type': booking.event_type,
+            'event_type_display': booking.get_event_type_display(),
+            'menu_type': booking.menu_type or '',
+            'no_of_packs': booking.no_of_packs or '',
             'advance_given': str(booking.advance_given),
+            'color': booking.get_time_color(),
             'created_by': booking.get_creator_name(),
             'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
         
         return JsonResponse({'booking': booking_data}, status=200)
+    
+    except Booking.DoesNotExist:
+        return JsonResponse({'error': 'Booking not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required_dual(login_url='/unauthorized/')
+@require_http_methods(["POST"])
+def create_booking(request):
+    """API endpoint to create a new booking"""
+    try:
+        data = json.loads(request.body)
+        
+        required_fields = ['client_name', 'booking_date', 'start_time', 'end_time', 
+                          'phone_number', 'event_type']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({'error': f'{field} is required'}, status=400)
+        
+        booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+        start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        
+        if end_time <= start_time:
+            return JsonResponse({'error': 'End time must be after start time'}, status=400)
+        
+        bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
+        if bookings_on_date >= 2:
+            return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
+        
+        created_by_user = None
+        created_by_custom = None
+        
+        if request.user.is_authenticated:
+            created_by_user = request.user
+        else:
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    created_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
+        booking = Booking.objects.create(
+            client_name=data['client_name'],
+            booking_date=booking_date,
+            start_time=start_time,
+            end_time=end_time,
+            phone_number=data['phone_number'],
+            email=data.get('email', ''),
+            event_type=data['event_type'],
+            menu_type=data.get('menu_type', ''),
+            no_of_packs=data.get('no_of_packs', ''),
+            advance_given=data.get('advance_given', 0.00),
+            created_by_user=created_by_user,
+            created_by_custom=created_by_custom
+        )
+        
+        log_activity(
+            'create',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking.client_name,
+            description=f'Created new booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})',
+            request=request,
+            performed_by_user=created_by_user,
+            performed_by_custom=created_by_custom
+        )
+        
+        nepali_date = get_nepali_date(booking.booking_date)
+        
+        return JsonResponse({
+            'message': 'Booking created successfully',
+            'booking': {
+                'id': booking.id,
+                'client_name': booking.client_name,
+                'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
+                'start_time': booking.start_time.strftime('%H:%M'),
+                'end_time': booking.end_time.strftime('%H:%M'),
+                'phone_number': booking.phone_number,
+                'email': booking.email or '',
+                'event_type': booking.event_type,
+                'event_type_display': booking.get_event_type_display(),
+                'menu_type': booking.menu_type or '',
+                'no_of_packs': booking.no_of_packs or '',
+                'advance_given': str(booking.advance_given),
+                'color': booking.get_time_color(),
+                'created_by': booking.get_creator_name()
+            }
+        }, status=201)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required_dual(login_url='/unauthorized/')
+@require_http_methods(["PUT"])
+def update_booking(request, booking_id):
+    """API endpoint to update a booking"""
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        data = json.loads(request.body)
+        
+        if 'client_name' in data:
+            booking.client_name = data['client_name']
+        if 'booking_date' in data:
+            new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+            if new_date != booking.booking_date:
+                count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
+                if count >= 2:
+                    return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
+            booking.booking_date = new_date
+        if 'start_time' in data:
+            booking.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+        if 'end_time' in data:
+            booking.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        if 'phone_number' in data:
+            booking.phone_number = data['phone_number']
+        if 'email' in data:
+            booking.email = data['email']
+        if 'event_type' in data:
+            booking.event_type = data['event_type']
+        if 'menu_type' in data:
+            booking.menu_type = data['menu_type']
+        if 'no_of_packs' in data:
+            booking.no_of_packs = data['no_of_packs']
+        if 'advance_given' in data:
+            booking.advance_given = data['advance_given']
+        
+        if booking.end_time <= booking.start_time:
+            return JsonResponse({'error': 'End time must be after start time'}, status=400)
+        
+        booking.save()
+        
+        performed_by_user = None
+        performed_by_custom = None
+        
+        if request.user.is_authenticated:
+            performed_by_user = request.user
+        else:
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
+        log_activity(
+            'update',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking.client_name,
+            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})',
+            request=request,
+            performed_by_user=performed_by_user,
+            performed_by_custom=performed_by_custom
+        )
+        
+        nepali_date = get_nepali_date(booking.booking_date)
+        
+        return JsonResponse({
+            'message': 'Booking updated successfully',
+            'booking': {
+                'id': booking.id,
+                'client_name': booking.client_name,
+                'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
+                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
+                'start_time': booking.start_time.strftime('%H:%M'),
+                'end_time': booking.end_time.strftime('%H:%M'),
+                'phone_number': booking.phone_number,
+                'email': booking.email or '',
+                'event_type': booking.event_type,
+                'event_type_display': booking.get_event_type_display(),
+                'menu_type': booking.menu_type or '',
+                'no_of_packs': booking.no_of_packs or '',
+                'advance_given': str(booking.advance_given),
+                'color': booking.get_time_color(),
+                'created_by': booking.get_creator_name()
+            }
+        }, status=200)
+    
+    except Booking.DoesNotExist:
+        return JsonResponse({'error': 'Booking not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required_dual(login_url='/unauthorized/')
+@require_http_methods(["DELETE"])
+def delete_booking(request, booking_id):
+    """API endpoint to delete a booking"""
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        
+        booking_client_name = booking.client_name
+        booking_date = booking.booking_date
+        booking_event_type = booking.get_event_type_display()
+        
+        performed_by_user = None
+        performed_by_custom = None
+        
+        if request.user.is_authenticated:
+            performed_by_user = request.user
+        else:
+            custom_user_id = request.COOKIES.get("custom_user_id")
+            if custom_user_id:
+                try:
+                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
+                except CustomUser.DoesNotExist:
+                    pass
+        
+        log_activity(
+            'delete',
+            'booking',
+            entity_id=booking.id,
+            entity_name=booking_client_name,
+            description=f'Deleted booking for {booking_client_name} on {booking_date} ({booking_event_type})',
+            request=request,
+            performed_by_user=performed_by_user,
+            performed_by_custom=performed_by_custom
+        )
+        
+        booking.delete()
+        
+        return JsonResponse({'message': 'Booking deleted successfully'}, status=200)
     
     except Booking.DoesNotExist:
         return JsonResponse({'error': 'Booking not found'}, status=404)
@@ -254,7 +481,11 @@ def get_bookings_by_date(request, date_str):
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
+                'event_type_display': booking.get_event_type_display(),
+                'menu_type': booking.menu_type or '',
+                'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
+                'color': booking.get_time_color(),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -267,238 +498,5 @@ def get_bookings_by_date(request, date_str):
             }
         }, status=200)
     
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required_dual(login_url='/unauthorized/')
-@require_http_methods(["POST"])
-def create_booking(request):
-    """API endpoint to create a new booking"""
-    try:
-        data = json.loads(request.body)
-        
-        # Validate required fields
-        required_fields = ['client_name', 'booking_date', 'start_time', 'end_time', 
-                          'phone_number', 'event_type']
-        for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({'error': f'{field} is required'}, status=400)
-        
-        # Parse date and time
-        booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
-        start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-        end_time = datetime.strptime(data['end_time'], '%H:%M').time()
-        
-        # Validate time
-        if end_time <= start_time:
-            return JsonResponse({'error': 'End time must be after start time'}, status=400)
-        
-        # Check booking limit
-        bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
-        if bookings_on_date >= 2:
-            return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
-        
-        # Determine creator (admin or custom user)
-        created_by_user = None
-        created_by_custom = None
-        
-        if request.user.is_authenticated:
-            # Django admin user
-            created_by_user = request.user
-        else:
-            # Custom user (via cookie)
-            custom_user_id = request.COOKIES.get("custom_user_id")
-            if custom_user_id:
-                try:
-                    created_by_custom = CustomUser.objects.get(id=custom_user_id)
-                except CustomUser.DoesNotExist:
-                    pass
-        
-        # Create booking
-        booking = Booking.objects.create(
-            client_name=data['client_name'],
-            booking_date=booking_date,
-            start_time=start_time,
-            end_time=end_time,
-            phone_number=data['phone_number'],
-            email=data.get('email', ''),
-            event_type=data['event_type'],
-            advance_given=data.get('advance_given', 0.00),
-            created_by_user=created_by_user,
-            created_by_custom=created_by_custom
-        )
-        
-        # Log booking creation activity
-        log_activity(
-            'create',
-            'booking',
-            entity_id=booking.id,
-            entity_name=booking.client_name,
-            description=f'Created new booking for {booking.client_name} on {booking.booking_date} ({booking.event_type})',
-            request=request,
-            performed_by_user=created_by_user,
-            performed_by_custom=created_by_custom
-        )
-        
-        nepali_date = get_nepali_date(booking.booking_date)
-        
-        return JsonResponse({
-            'message': 'Booking created successfully',
-            'booking': {
-                'id': booking.id,
-                'client_name': booking.client_name,
-                'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
-                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
-                'phone_number': booking.phone_number,
-                'email': booking.email or '',
-                'event_type': booking.event_type,
-                'advance_given': str(booking.advance_given),
-                'created_by': booking.get_creator_name()
-            }
-        }, status=201)
-    
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required_dual(login_url='/unauthorized/')
-@require_http_methods(["PUT"])
-def update_booking(request, booking_id):
-    """API endpoint to update a booking"""
-    try:
-        booking = Booking.objects.get(id=booking_id)
-        data = json.loads(request.body)
-        
-        # Store old values for logging
-        old_client_name = booking.client_name
-        old_date = booking.booking_date
-        
-        # Update fields
-        if 'client_name' in data:
-            booking.client_name = data['client_name']
-        if 'booking_date' in data:
-            new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
-            if new_date != booking.booking_date:
-                count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
-                if count >= 2:
-                    return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
-            booking.booking_date = new_date
-        if 'start_time' in data:
-            booking.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-        if 'end_time' in data:
-            booking.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
-        if 'phone_number' in data:
-            booking.phone_number = data['phone_number']
-        if 'email' in data:
-            booking.email = data['email']
-        if 'event_type' in data:
-            booking.event_type = data['event_type']
-        if 'advance_given' in data:
-            booking.advance_given = data['advance_given']
-        
-        # Validate time
-        if booking.end_time <= booking.start_time:
-            return JsonResponse({'error': 'End time must be after start time'}, status=400)
-        
-        booking.save()
-        
-        # Determine who performed the update
-        performed_by_user = None
-        performed_by_custom = None
-        
-        if request.user.is_authenticated:
-            performed_by_user = request.user
-        else:
-            custom_user_id = request.COOKIES.get("custom_user_id")
-            if custom_user_id:
-                try:
-                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
-                except CustomUser.DoesNotExist:
-                    pass
-        
-        # Log booking update activity
-        log_activity(
-            'update',
-            'booking',
-            entity_id=booking.id,
-            entity_name=booking.client_name,
-            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.event_type})',
-            request=request,
-            performed_by_user=performed_by_user,
-            performed_by_custom=performed_by_custom
-        )
-        
-        nepali_date = get_nepali_date(booking.booking_date)
-        
-        return JsonResponse({
-            'message': 'Booking updated successfully',
-            'booking': {
-                'id': booking.id,
-                'client_name': booking.client_name,
-                'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
-                'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
-                'phone_number': booking.phone_number,
-                'email': booking.email or '',
-                'event_type': booking.event_type,
-                'advance_given': str(booking.advance_given),
-                'created_by': booking.get_creator_name()
-            }
-        }, status=200)
-    
-    except Booking.DoesNotExist:
-        return JsonResponse({'error': 'Booking not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required_dual(login_url='/unauthorized/')
-@require_http_methods(["DELETE"])
-def delete_booking(request, booking_id):
-    """API endpoint to delete a booking"""
-    try:
-        booking = Booking.objects.get(id=booking_id)
-        
-        # Store booking info before deletion
-        booking_client_name = booking.client_name
-        booking_date = booking.booking_date
-        booking_event_type = booking.event_type
-        
-        # Determine who performed the deletion
-        performed_by_user = None
-        performed_by_custom = None
-        
-        if request.user.is_authenticated:
-            performed_by_user = request.user
-        else:
-            custom_user_id = request.COOKIES.get("custom_user_id")
-            if custom_user_id:
-                try:
-                    performed_by_custom = CustomUser.objects.get(id=custom_user_id)
-                except CustomUser.DoesNotExist:
-                    pass
-        
-        # Log booking deletion activity BEFORE deleting
-        log_activity(
-            'delete',
-            'booking',
-            entity_id=booking.id,
-            entity_name=booking_client_name,
-            description=f'Deleted booking for {booking_client_name} on {booking_date} ({booking_event_type})',
-            request=request,
-            performed_by_user=performed_by_user,
-            performed_by_custom=performed_by_custom
-        )
-        
-        booking.delete()
-        
-        return JsonResponse({'message': 'Booking deleted successfully'}, status=200)
-    
-    except Booking.DoesNotExist:
-        return JsonResponse({'error': 'Booking not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

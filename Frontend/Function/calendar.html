@@ -23,7 +23,6 @@
             <div class="bg-white shadow-lg p-4 sm:p-6 mb-6">
                 <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                    <div class="flex items-center gap-3 mb-4">
-                        <!-- Conditional Back Button -->
                         <a href="{% if request.user.is_staff %}{% url 'admin_dashboard' %}{% else %}{% url 'user_dashboard' %}{% endif %}" 
                            class="text-gray-600 hover:text-gray-800 transition">
                             <i class="ri-arrow-left-line text-2xl"></i>
@@ -74,9 +73,8 @@
                             </button>
                         </div>
 
-                        <!-- Calendar Grid - FIXED: No nested div -->
                         <div class="calendar-grid">
-                            <!-- JavaScript will populate this with headers and days -->
+                            <!-- JavaScript will populate this -->
                         </div>
                     </div>
                 </div>
@@ -127,7 +125,12 @@
 
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Event Type *</label>
-                        <input type="text" id="eventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., Wedding, Birthday" required>
+                        <select id="eventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                            <option value="">Select Event Type</option>
+                            {% for value, display in event_types %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div>
@@ -148,6 +151,16 @@
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Email (Optional)</label>
                         <input type="email" id="email" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="client@example.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Menu Type</label>
+                        <input type="text" id="menuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., Vegetarian, Non-Veg">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Packs</label>
+                        <input type="text" id="noOfPacks" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., 100 packs">
                     </div>
 
                     <div class="sm:col-span-2">
@@ -176,7 +189,7 @@
         </div>
     </div>
 
-    <!-- View Bookings Modal (for specific date) -->
+    <!-- View Bookings Modal -->
     <div id="viewBookingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 modal-backdrop">
         <div class="bg-white p-6 sm:p-8 max-w-4xl w-full shadow-2xl modal-content max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-6">
@@ -236,7 +249,12 @@
 
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Event Type *</label>
-                        <input type="text" id="editEventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                        <select id="editEventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                            <option value="">Select Event Type</option>
+                            {% for value, display in event_types %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div>
@@ -257,6 +275,16 @@
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Email (Optional)</label>
                         <input type="email" id="editEmail" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Menu Type</label>
+                        <input type="text" id="editMenuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Packs</label>
+                        <input type="text" id="editNoOfPacks" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
                     </div>
 
                     <div class="sm:col-span-2">
@@ -284,7 +312,6 @@
         </div>
     </div>
 
-    <!-- Add Booking Button -->
     <button class="add-booking-btn" onclick="openAddModal()">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>

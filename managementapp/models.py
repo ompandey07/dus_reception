@@ -8,6 +8,20 @@ class Booking(models.Model):
     """
     Booking model for calendar events
     """
+    EVENT_TYPE_CHOICES = [
+        ('wedding', 'Wedding'),
+        ('bartamanda', 'Bartamanda/Rice Feeding'),
+        ('conference', 'Conference'),
+        ('birthday', 'Birthday Party'),
+        ('anniversary', 'Anniversary'),
+        ('corporate', 'Corporate Event'),
+        ('engagement', 'Engagement'),
+        ('bratabandha', 'Bratabandha'),
+        ('reception', 'Reception'),
+        ('seminar', 'Seminar/Workshop'),
+        ('others', 'Others'),
+    ]
+    
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,15}$',
         message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
@@ -19,7 +33,9 @@ class Booking(models.Model):
     end_time = models.TimeField()
     phone_number = models.CharField(validators=[phone_regex], max_length=17)
     email = models.EmailField(blank=True, null=True)
-    event_type = models.CharField(max_length=255)
+    event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES, default='others')
+    menu_type = models.CharField(max_length=255, blank=True, null=True, help_text="Type of menu/food arrangement")
+    no_of_packs = models.CharField(max_length=100, blank=True, null=True, help_text="Number of packs/guests")
     advance_given = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     # Track who created this booking
@@ -48,7 +64,7 @@ class Booking(models.Model):
         verbose_name_plural = 'Bookings'
     
     def __str__(self):
-        return f"{self.client_name} - {self.booking_date} ({self.event_type})"
+        return f"{self.client_name} - {self.booking_date} ({self.get_event_type_display()})"
     
     def get_creator_name(self):
         """Get the name of who created this booking"""
@@ -58,11 +74,33 @@ class Booking(models.Model):
             return f"{self.created_by_custom.full_name} (User)"
         return "System"
     
+    def get_time_color(self):
+        """Get color based on booking time duration"""
+        if not self.start_time or not self.end_time:
+            return '#8b5cf6'  # Default purple
+        
+        from datetime import datetime, timedelta
+        start = datetime.combine(datetime.today(), self.start_time)
+        end = datetime.combine(datetime.today(), self.end_time)
+        duration = (end - start).total_seconds() / 3600  # Duration in hours
+        
+        # Color coding based on duration
+        if duration <= 2:
+            return '#10b981'  # Green - Short event
+        elif duration <= 4:
+            return '#f59e0b'  # Orange - Medium event
+        elif duration <= 6:
+            return '#ef4444'  # Red - Long event
+        else:
+            return '#8b5cf6'  # Purple - Full day event
+    
     def clean(self):
         """Validate that end_time is after start_time"""
         from django.core.exceptions import ValidationError
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError('End time must be after start time.')
+
+
         
 
 

@@ -150,7 +150,7 @@
                         <i class="ri-close-circle-line"></i> Clear
                     </button>
                     <button id="exportCSV" class="text-sm gradient-green text-white px-4 py-2 font-semibold hover:shadow-lg transition">
-                        <i class="ri-download-line mr-1"></i>Export CSV
+                        <i class="ri-download-line mr-1"></i>Export Excel
                     </button>
                 </div>
             </div>
@@ -206,7 +206,7 @@
                 <div class="sm:col-span-2">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Search</label>
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Search client name, phone, email..." class="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                        <input type="text" id="searchInput" placeholder="Search client name, phone, email, menu..." class="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
                         <i class="ri-search-line absolute left-3 top-3 text-gray-400"></i>
                     </div>
                 </div>
@@ -252,11 +252,13 @@
                             <tr>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Client Name</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Event Type</th>
-                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden sm:table-cell">Booking Date</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden lg:table-cell">Booking Date</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Time</th>
-                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Phone</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden md:table-cell">Phone</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden xl:table-cell">Menu Type</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden xl:table-cell">Packs</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Advance</th>
-                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden md:table-cell">Created By</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden 2xl:table-cell">Created By</th>
                             </tr>
                         </thead>
                         <tbody id="bookingsTableBody" class="divide-y divide-gray-100"></tbody>
@@ -390,7 +392,7 @@
                                 ${booking.event_type}
                             </span>
                         </td>
-                        <td class="px-4 py-4 text-sm text-gray-600 hidden sm:table-cell">
+                        <td class="px-4 py-4 text-sm text-gray-600 hidden lg:table-cell">
                             <div>
                                 <i class="ri-calendar-2-line text-gray-400 mr-1"></i>
                                 ${booking.booking_date_formatted}
@@ -403,15 +405,21 @@
                             <div><i class="ri-time-line mr-1"></i>${booking.start_time}</div>
                             <div class="text-xs text-gray-500">to ${booking.end_time}</div>
                         </td>
-                        <td class="px-4 py-4 text-sm text-gray-600">
+                        <td class="px-4 py-4 text-sm text-gray-600 hidden md:table-cell">
                             <i class="ri-phone-line mr-1"></i>${booking.phone_number}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-gray-600 hidden xl:table-cell">
+                            ${booking.menu_type ? `<i class="ri-restaurant-line text-orange-600 mr-1"></i>${booking.menu_type}` : '<span class="text-gray-400">-</span>'}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-gray-600 hidden xl:table-cell text-center">
+                            ${booking.no_of_packs ? `<span class="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-semibold">${booking.no_of_packs}</span>` : '<span class="text-gray-400">-</span>'}
                         </td>
                         <td class="px-4 py-4">
                             <span class="gradient-green text-white px-3 py-1.5 text-xs font-bold shadow-md">
                                 NPR ${booking.advance_given.toLocaleString()}
                             </span>
                         </td>
-                        <td class="px-4 py-4 text-sm text-gray-600 hidden md:table-cell">
+                        <td class="px-4 py-4 text-sm text-gray-600 hidden 2xl:table-cell">
                             <i class="ri-user-star-line text-purple-600 mr-1"></i>
                             ${booking.created_by}
                         </td>
@@ -475,7 +483,7 @@
             });
         }
 
-        // Export CSV
+        // Export Excel/CSV
         document.getElementById('exportCSV').addEventListener('click', async () => {
             const params = new URLSearchParams();
 
