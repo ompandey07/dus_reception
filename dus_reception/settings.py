@@ -14,11 +14,7 @@ SECRET_KEY = 'django-insecure-0(0o1*codxcz1!3-@by$@=+9phj!#5tof2_kt=aoc+*+g*arsg
 DEBUG = True
 
 # ALLOWED_HOSTS SETTING
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    'http://portal.dusreception.com/',
-]
+ALLOWED_HOSTS = ['*']
 
 # CSRF TRUSTED_ORIGINS SETTING
 CSRF_TRUSTED_ORIGINS = [
