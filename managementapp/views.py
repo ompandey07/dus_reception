@@ -71,6 +71,28 @@ def get_nepali_date(english_date):
         return None
 
 
+def get_shift_type(start_time, end_time):
+    """Determine shift type based on start and end times"""
+    from datetime import time
+    
+    morning_start = time(6, 0)
+    afternoon_end = time(15, 0)
+    evening_end = time(21, 0)
+    
+    # Morning shift: 6 AM to 3 PM
+    if start_time == morning_start and end_time == afternoon_end:
+        return 'morning'
+    # Evening shift: 3 PM to 9 PM
+    elif start_time == afternoon_end and end_time == evening_end:
+        return 'evening'
+    # Full day: 6 AM to 9 PM
+    elif start_time == morning_start and end_time == evening_end:
+        return 'fullday'
+    # Custom time
+    else:
+        return 'custom'
+
+
 # ============================================================
 # CALENDAR VIEWS
 # ============================================================
@@ -134,7 +156,8 @@ def get_calendar_data(request):
                     'event_type': booking.get_event_type_display(),
                     'start_time': booking.start_time.strftime('%H:%M'),
                     'end_time': booking.end_time.strftime('%H:%M'),
-                    'color': booking.get_time_color()
+                    'color': booking.get_time_color(),
+                    'shift_type': get_shift_type(booking.start_time, booking.end_time)
                 })
             
             calendar_days.append(day_data)
@@ -184,6 +207,7 @@ def get_bookings(request):
                 'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
+                'shift_type': get_shift_type(booking.start_time, booking.end_time),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -221,6 +245,7 @@ def get_booking_detail(request, booking_id):
             'no_of_packs': booking.no_of_packs or '',
             'advance_given': str(booking.advance_given),
             'color': booking.get_time_color(),
+            'shift_type': get_shift_type(booking.start_time, booking.end_time),
             'created_by': booking.get_creator_name(),
             'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -241,10 +266,18 @@ def create_booking(request):
         data = json.loads(request.body)
         
         required_fields = ['client_name', 'booking_date', 'start_time', 'end_time', 
-                          'phone_number', 'event_type']
+                          'phone_number', 'event_type', 'advance_given']
         for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({'error': f'{field} is required'}, status=400)
+            if field not in data or data[field] == '' or data[field] is None:
+                return JsonResponse({'error': f'{field.replace("_", " ").title()} is required'}, status=400)
+        
+        # Validate advance_given
+        try:
+            advance_given = float(data['advance_given'])
+            if advance_given < 0:
+                return JsonResponse({'error': 'Advance given cannot be negative'}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
         
         booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
         start_time = datetime.strptime(data['start_time'], '%H:%M').time()
@@ -280,7 +313,7 @@ def create_booking(request):
             event_type=data['event_type'],
             menu_type=data.get('menu_type', ''),
             no_of_packs=data.get('no_of_packs', ''),
-            advance_given=data.get('advance_given', 0.00),
+            advance_given=advance_given,
             created_by_user=created_by_user,
             created_by_custom=created_by_custom
         )
@@ -315,6 +348,7 @@ def create_booking(request):
                 'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
+                'shift_type': get_shift_type(booking.start_time, booking.end_time),
                 'created_by': booking.get_creator_name()
             }
         }, status=201)
@@ -355,7 +389,13 @@ def update_booking(request, booking_id):
         if 'no_of_packs' in data:
             booking.no_of_packs = data['no_of_packs']
         if 'advance_given' in data:
-            booking.advance_given = data['advance_given']
+            try:
+                advance_given = float(data['advance_given'])
+                if advance_given < 0:
+                    return JsonResponse({'error': 'Advance given cannot be negative'}, status=400)
+                booking.advance_given = advance_given
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
         
         if booking.end_time <= booking.start_time:
             return JsonResponse({'error': 'End time must be after start time'}, status=400)
@@ -405,6 +445,7 @@ def update_booking(request, booking_id):
                 'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
+                'shift_type': get_shift_type(booking.start_time, booking.end_time),
                 'created_by': booking.get_creator_name()
             }
         }, status=200)
@@ -486,6 +527,7 @@ def get_bookings_by_date(request, date_str):
                 'no_of_packs': booking.no_of_packs or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
+                'shift_type': get_shift_type(booking.start_time, booking.end_time),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })

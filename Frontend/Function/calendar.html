@@ -9,6 +9,50 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{% static 'Assests/css/calendar.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet"/>
+    <style>
+        /* Shift-based fill patterns */
+        .calendar-day.shift-morning {
+            background: linear-gradient(to bottom, #fef3c7 0%, #fef3c7 50%, #ffffff 50%, #ffffff 100%);
+        }
+        
+        .calendar-day.shift-evening {
+            background: linear-gradient(to bottom, #ddd6fe 0%, #ddd6fe 100%);
+        }
+        
+        .calendar-day.shift-fullday {
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+        }
+        
+        .calendar-day.shift-fullday .day-number,
+        .calendar-day.shift-fullday .day-nepali {
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        /* Enhanced today highlight */
+        .calendar-day.today {
+            border: 3px solid #10b981 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        
+        .calendar-day.today .day-number {
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 50%;
+            display: inline-block;
+            font-weight: bold;
+        }
+        
+        /* Multiple bookings on same day */
+        .calendar-day.shift-morning.shift-evening,
+        .calendar-day.has-multiple-shifts {
+            background: linear-gradient(to bottom, 
+                #fef3c7 0%, #fef3c7 33%, 
+                #ddd6fe 33%, #ddd6fe 66%,
+                #ffffff 66%, #ffffff 100%);
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
     <div id="topBarPreloader" class="top-bar-preloader">
@@ -48,6 +92,26 @@
                             </svg>
                             Refresh
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Legend -->
+                <div class="mt-4 pt-4 border-t flex flex-wrap gap-4 text-xs sm:text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded" style="background: linear-gradient(to bottom, #fef3c7 0%, #fef3c7 50%, #ffffff 50%, #ffffff 100%);"></div>
+                        <span>Morning (6 AM - 3 PM)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-purple-200"></div>
+                        <span>Evening (3 PM - 9 PM)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded bg-gradient-to-br from-purple-400 to-purple-600"></div>
+                        <span>Full Day (6 AM - 9 PM)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded border-2 border-green-500"></div>
+                        <span>Today</span>
                     </div>
                 </div>
             </div>
@@ -164,8 +228,9 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given</label>
-                        <input type="number" id="advanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" value="0">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given (Rs.) *</label>
+                        <input type="number" id="advanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" placeholder="Enter advance amount" required>
+                        <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
                     </div>
                 </div>
 
@@ -288,8 +353,9 @@
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given</label>
-                        <input type="number" id="editAdvanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given (Rs.) *</label>
+                        <input type="number" id="editAdvanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" required>
+                        <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
                     </div>
                 </div>
 

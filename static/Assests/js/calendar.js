@@ -110,6 +110,43 @@ function hidePreloader() {
     document.getElementById('topBarPreloader').classList.add('hide');
 }
 
+// Determine shift class based on shift type
+function getShiftClass(shiftType) {
+    switch(shiftType) {
+        case 'morning':
+            return 'shift-morning';
+        case 'evening':
+            return 'shift-evening';
+        case 'fullday':
+            return 'shift-fullday';
+        default:
+            return '';
+    }
+}
+
+// Get combined shift classes for multiple bookings
+function getCombinedShiftClasses(bookings) {
+    if (bookings.length === 0) return '';
+    if (bookings.length === 1) return getShiftClass(bookings[0].shift_type);
+    
+    const shiftTypes = bookings.map(b => b.shift_type);
+    const hasMorning = shiftTypes.includes('morning');
+    const hasEvening = shiftTypes.includes('evening');
+    const hasFullday = shiftTypes.includes('fullday');
+    
+    if (hasFullday) {
+        return 'shift-fullday';
+    } else if (hasMorning && hasEvening) {
+        return 'has-multiple-shifts';
+    } else if (hasMorning) {
+        return 'shift-morning';
+    } else if (hasEvening) {
+        return 'shift-evening';
+    }
+    
+    return '';
+}
+
 // Load month data with Nepali dates from backend
 async function loadMonthData() {
     try {
@@ -141,7 +178,7 @@ async function loadMonthData() {
     }
 }
 
-// Render calendar with backend Nepali dates and color coding
+// Render calendar with backend Nepali dates and shift-based fill patterns
 function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -212,17 +249,23 @@ function renderCalendar() {
         let classes = 'calendar-day';
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
-        if (hasBooking) classes += ' has-booking';
+        if (hasBooking) {
+            classes += ' has-booking';
+            // Add shift-based styling
+            const shiftClass = getCombinedShiftClasses(dayBookings);
+            if (shiftClass) classes += ' ' + shiftClass;
+        }
         
         // Build events HTML with color indicators
         let eventsHTML = '';
         if (hasBooking) {
             dayBookings.forEach((booking, idx) => {
                 if (idx < 2) {
+                    const shiftLabel = getShiftLabel(booking.shift_type);
                     eventsHTML += `
                         <div class="day-event" 
                              style="border-left: 3px solid ${booking.color}; padding-left: 6px;" 
-                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time})">
+                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time}) ${shiftLabel}">
                             ${escapeHtml(booking.client_name)}
                         </div>
                     `;
@@ -247,6 +290,19 @@ function renderCalendar() {
     const calendarGrid = document.querySelector('.calendar-grid');
     if (calendarGrid) {
         calendarGrid.innerHTML = calendarHTML;
+    }
+}
+
+function getShiftLabel(shiftType) {
+    switch(shiftType) {
+        case 'morning':
+            return '[Morning Shift]';
+        case 'evening':
+            return '[Evening Shift]';
+        case 'fullday':
+            return '[Full Day]';
+        default:
+            return '';
     }
 }
 
@@ -329,7 +385,7 @@ function renderBookingsList() {
                     <line x1="8" x2="8" y1="2" y2="6"></line>
                     <line x1="3" x2="21" y1="10" y2="10"></line>
                 </svg>
-                ${formatDate(booking.booking_date)}
+                ${formatDate(booking.booking_date)} ${getShiftLabel(booking.shift_type)}
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -337,6 +393,12 @@ function renderBookingsList() {
                     <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 ${escapeHtml(booking.event_type_display)}
+            </div>
+            <div class="booking-detail">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Advance: Rs. ${booking.advance_given}
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -410,6 +472,8 @@ function openDetailModal(booking) {
     document.getElementById('selectedDateDisplay').textContent = `${booking.booking_date_formatted} (${booking.booking_date_nepali})`;
     
     const container = document.getElementById('dateBookingsList');
+    const shiftLabel = getShiftLabel(booking.shift_type);
+    
     container.innerHTML = `
         <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-6">
@@ -420,7 +484,7 @@ function openDetailModal(booking) {
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        ${booking.start_time} - ${booking.end_time}
+                        ${booking.start_time} - ${booking.end_time} ${shiftLabel}
                     </p>
                 </div>
             </div>
@@ -462,7 +526,7 @@ function openDetailModal(booking) {
                 ` : ''}
                 <div class="detail-item">
                     <p class="detail-label">Advance Given</p>
-                    <p class="detail-value">Rs. ${booking.advance_given}</p>
+                    <p class="detail-value font-bold">Rs. ${booking.advance_given}</p>
                 </div>
                 <div class="detail-item sm:col-span-2">
                     <p class="detail-label">Created By</p>
@@ -521,12 +585,14 @@ function openDateBookingsModal(dateStr, bookings) {
     document.getElementById('selectedDateDisplay').textContent = `${formatDate(dateStr)} - ${bookings.length} Bookings`;
     
     const container = document.getElementById('dateBookingsList');
-    container.innerHTML = bookings.map(booking => `
+    container.innerHTML = bookings.map(booking => {
+        const shiftLabel = getShiftLabel(booking.shift_type);
+        return `
         <div class="bg-gray-50 p-4 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-3">
                 <div>
                     <h4 class="font-bold text-lg text-gray-800">${escapeHtml(booking.client_name)}</h4>
-                    <p class="text-sm font-semibold" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time}</p>
+                    <p class="text-sm font-semibold" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time} ${shiftLabel}</p>
                 </div>
             </div>
             
@@ -591,7 +657,7 @@ function openDateBookingsModal(dateStr, bookings) {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;}).join('');
     
     document.getElementById('addInViewButton').style.display = (bookings.length < 2) ? 'block' : 'none';
     
@@ -639,6 +705,9 @@ function openAddModal(dateStr = null) {
     const endTime = new Date(now.getTime() + 60 * 60 * 1000);
     document.getElementById('endTime').value = String(endTime.getHours()).padStart(2, '0') + ':' + 
                                                String(endTime.getMinutes()).padStart(2, '0');
+    
+    // Reset advance given field
+    document.getElementById('advanceGiven').value = '';
     
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -769,10 +838,23 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     const eventType = document.getElementById('eventType').value;
     const menuType = document.getElementById('menuType').value.trim();
     const noOfPacks = document.getElementById('noOfPacks').value.trim();
-    const advanceGiven = document.getElementById('advanceGiven').value || 0;
+    const advanceGiven = document.getElementById('advanceGiven').value;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
+        return;
+    }
+    
+    // Validate advance given is not empty and is a valid number
+    if (!advanceGiven || advanceGiven === '' || isNaN(parseFloat(advanceGiven))) {
+        showToast('Please enter a valid advance amount', 'error');
+        document.getElementById('advanceGiven').focus();
+        return;
+    }
+    
+    if (parseFloat(advanceGiven) < 0) {
+        showToast('Advance amount cannot be negative', 'error');
+        document.getElementById('advanceGiven').focus();
         return;
     }
     
@@ -848,10 +930,23 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     const eventType = document.getElementById('editEventType').value;
     const menuType = document.getElementById('editMenuType').value.trim();
     const noOfPacks = document.getElementById('editNoOfPacks').value.trim();
-    const advanceGiven = document.getElementById('editAdvanceGiven').value || 0;
+    const advanceGiven = document.getElementById('editAdvanceGiven').value;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
+        return;
+    }
+    
+    // Validate advance given
+    if (!advanceGiven || advanceGiven === '' || isNaN(parseFloat(advanceGiven))) {
+        showToast('Please enter a valid advance amount', 'error');
+        document.getElementById('editAdvanceGiven').focus();
+        return;
+    }
+    
+    if (parseFloat(advanceGiven) < 0) {
+        showToast('Advance amount cannot be negative', 'error');
+        document.getElementById('editAdvanceGiven').focus();
         return;
     }
     
