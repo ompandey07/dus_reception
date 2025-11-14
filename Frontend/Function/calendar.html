@@ -10,23 +10,24 @@
     <link rel="stylesheet" href="{% static 'Assests/css/calendar.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.7.0/fonts/remixicon.css" rel="stylesheet"/>
     <style>
-        /* Shift-based fill patterns */
+        /* Unified yellow/amber color scheme for all shifts */
         .calendar-day.shift-morning {
             background: linear-gradient(to bottom, #fef3c7 0%, #fef3c7 50%, #ffffff 50%, #ffffff 100%);
         }
         
         .calendar-day.shift-evening {
-            background: linear-gradient(to bottom, #ddd6fe 0%, #ddd6fe 100%);
+            background: linear-gradient(to bottom, #fed7aa 0%, #fed7aa 100%);
         }
         
         .calendar-day.shift-fullday {
-            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
         }
         
         .calendar-day.shift-fullday .day-number,
         .calendar-day.shift-fullday .day-nepali {
             color: #ffffff;
             font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         /* Enhanced today highlight */
@@ -48,9 +49,8 @@
         .calendar-day.shift-morning.shift-evening,
         .calendar-day.has-multiple-shifts {
             background: linear-gradient(to bottom, 
-                #fef3c7 0%, #fef3c7 33%, 
-                #ddd6fe 33%, #ddd6fe 66%,
-                #ffffff 66%, #ffffff 100%);
+                #fef3c7 0%, #fef3c7 50%, 
+                #fed7aa 50%, #fed7aa 100%);
         }
     </style>
 </head>
@@ -95,18 +95,18 @@
                     </div>
                 </div>
                 
-                <!-- Legend -->
+                <!-- Legend with unified yellow colors -->
                 <div class="mt-4 pt-4 border-t flex flex-wrap gap-4 text-xs sm:text-sm">
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 rounded" style="background: linear-gradient(to bottom, #fef3c7 0%, #fef3c7 50%, #ffffff 50%, #ffffff 100%);"></div>
                         <span>Morning (6 AM - 3 PM)</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="w-6 h-6 rounded bg-purple-200"></div>
+                        <div class="w-6 h-6 rounded" style="background: #fed7aa;"></div>
                         <span>Evening (3 PM - 9 PM)</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div class="w-6 h-6 rounded bg-gradient-to-br from-purple-400 to-purple-600"></div>
+                        <div class="w-6 h-6 rounded bg-gradient-to-br from-amber-400 to-amber-500"></div>
                         <span>Full Day (6 AM - 9 PM)</span>
                     </div>
                     <div class="flex items-center gap-2">

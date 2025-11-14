@@ -296,9 +296,9 @@ function renderCalendar() {
 function getShiftLabel(shiftType) {
     switch(shiftType) {
         case 'morning':
-            return '[Morning Shift]';
+            return '[Morning]';
         case 'evening':
-            return '[Evening Shift]';
+            return '[Evening]';
         case 'fullday':
             return '[Full Day]';
         default:

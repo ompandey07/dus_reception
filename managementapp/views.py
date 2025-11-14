@@ -72,25 +72,26 @@ def get_nepali_date(english_date):
 
 
 def get_shift_type(start_time, end_time):
-    """Determine shift type based on start and end times"""
+    """Determine shift type based on start and end times - FLEXIBLE LOGIC"""
     from datetime import time
     
-    morning_start = time(6, 0)
-    afternoon_end = time(15, 0)
-    evening_end = time(21, 0)
+    noon = time(12, 0)
+    afternoon_boundary = time(15, 0)
+    evening_threshold = time(18, 0)
     
-    # Morning shift: 6 AM to 3 PM
-    if start_time == morning_start and end_time == afternoon_end:
-        return 'morning'
-    # Evening shift: 3 PM to 9 PM
-    elif start_time == afternoon_end and end_time == evening_end:
-        return 'evening'
-    # Full day: 6 AM to 9 PM
-    elif start_time == morning_start and end_time == evening_end:
+    # Full day: starts before noon (12 PM) AND ends after 6 PM
+    # This covers: 7 AM - 9 PM, 8 AM - 8 PM, 6 AM - 9 PM, 11 AM - 7 PM, etc.
+    if start_time < noon and end_time > evening_threshold:
         return 'fullday'
-    # Custom time
+    # Morning shift: ends at or before 3 PM
+    elif end_time <= afternoon_boundary:
+        return 'morning'
+    # Evening shift: starts at or after 3 PM
+    elif start_time >= afternoon_boundary:
+        return 'evening'
+    # Mixed or custom time
     else:
-        return 'custom'
+        return ''
 
 
 # ============================================================
