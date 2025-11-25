@@ -37,6 +37,7 @@ class Booking(models.Model):
     menu_type = models.CharField(max_length=255, blank=True, null=True, help_text="Type of menu/food arrangement")
     no_of_packs = models.CharField(max_length=100, blank=True, null=True, help_text="Number of packs/guests")
     advance_given = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    is_full_day = models.BooleanField(default=False, help_text="If checked, no other bookings allowed on this date")
     
     # Track who created this booking
     created_by_user = models.ForeignKey(
@@ -99,7 +100,6 @@ class Booking(models.Model):
         from django.core.exceptions import ValidationError
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError('End time must be after start time.')
-
 
         
 

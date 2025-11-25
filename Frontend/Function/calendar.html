@@ -52,6 +52,31 @@
                 #fef3c7 0%, #fef3c7 50%, 
                 #fed7aa 50%, #fed7aa 100%);
         }
+        
+        /* Checkbox styling */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: #fef3c7;
+            border-radius: 8px;
+            border: 2px solid #fbbf24;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #dc2626;
+        }
+        
+        .checkbox-container label {
+            cursor: pointer;
+            font-weight: 600;
+            color: #dc2626;
+            user-select: none;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
@@ -59,7 +84,7 @@
         <div class="top-bar-preloader-progress"></div>
     </div>
 
-    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-3"></div>
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-3" style="z-index: 99999 !important;"></div>
 
     <div class="min-h-screen p-4 sm:p-6 lg:p-8">
         <div class="max-w-7xl mx-auto">
@@ -232,6 +257,14 @@
                         <input type="number" id="advanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" placeholder="Enter advance amount" required>
                         <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
                     </div>
+
+                    <div class="sm:col-span-2">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="isFullDay" name="isFullDay">
+                            <label for="isFullDay">Full Day Booking (No other bookings allowed on this date)</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">⚠️ Checking this will block the entire day for other bookings</p>
+                    </div>
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-3 mt-6">
@@ -356,6 +389,14 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given (Rs.) *</label>
                         <input type="number" id="editAdvanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" required>
                         <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="editIsFullDay" name="editIsFullDay">
+                            <label for="editIsFullDay">Full Day Booking (No other bookings allowed on this date)</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">⚠️ Checking this will block the entire day for other bookings</p>
                     </div>
                 </div>
 

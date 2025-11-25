@@ -15,6 +15,11 @@ window.addEventListener('load', function() {
     
     document.getElementById('creatorFilter').addEventListener('change', loadBookings);
     setupModalBackdropHandlers();
+    
+    // Set minimum date to today for date inputs
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('bookingDate').setAttribute('min', today);
+    document.getElementById('editBookingDate').setAttribute('min', today);
 });
 
 // Setup modal backdrop click handlers
@@ -245,6 +250,7 @@ function renderCalendar() {
         const dayBookings = allBookings.filter(b => b.booking_date === localDateStr);
         const hasBooking = dayBookings.length > 0;
         const bookingCount = dayBookings.length;
+        const hasFullDayBooking = dayBookings.some(b => b.is_full_day);
         
         let classes = 'calendar-day';
         if (isOtherMonth) classes += ' other-month';
@@ -262,11 +268,12 @@ function renderCalendar() {
             dayBookings.forEach((booking, idx) => {
                 if (idx < 2) {
                     const shiftLabel = getShiftLabel(booking.shift_type);
+                    const fullDayBadge = booking.is_full_day ? '<span style="background: #dc2626; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">FULL DAY</span>' : '';
                     eventsHTML += `
                         <div class="day-event" 
                              style="border-left: 3px solid ${booking.color}; padding-left: 6px;" 
-                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time}) ${shiftLabel}">
-                            ${escapeHtml(booking.client_name)}
+                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time}) ${shiftLabel}${booking.is_full_day ? ' [FULL DAY]' : ''}">
+                            ${escapeHtml(booking.client_name)}${fullDayBadge}
                         </div>
                     `;
                 }
@@ -372,10 +379,12 @@ function renderBookingsList() {
         return;
     }
     
-    container.innerHTML = upcomingBookings.slice(0, 10).map(booking => `
+    container.innerHTML = upcomingBookings.slice(0, 10).map(booking => {
+        const fullDayBadge = booking.is_full_day ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">FULL DAY</span>' : '';
+        return `
         <div class="booking-card" style="border-left: 4px solid ${booking.color}">
             <div class="booking-card-header">
-                <div class="booking-client">${escapeHtml(booking.client_name)}</div>
+                <div class="booking-client">${escapeHtml(booking.client_name)} ${fullDayBadge}</div>
                 <div class="booking-time" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time}</div>
             </div>
             <div class="booking-detail">
@@ -431,7 +440,7 @@ function renderBookingsList() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `;}).join('');
 }
 
 async function viewBookingDetail(bookingId) {
@@ -452,8 +461,10 @@ async function viewBookingDetail(bookingId) {
             selectedDate = booking.booking_date;
             const dayBookings = allBookings.filter(b => b.booking_date === selectedDate);
             const bookingCount = dayBookings.length;
+            const hasFullDay = dayBookings.some(b => b.is_full_day);
             openDetailModal(booking);
-            document.getElementById('addInViewButton').style.display = (bookingCount < 2) ? 'block' : 'none';
+            // Hide add button if there's a full day booking or max 2 bookings reached
+            document.getElementById('addInViewButton').style.display = (bookingCount < 2 && !hasFullDay) ? 'block' : 'none';
         } else {
             showToast('Failed to load booking details', 'error');
         }
@@ -473,19 +484,21 @@ function openDetailModal(booking) {
     
     const container = document.getElementById('dateBookingsList');
     const shiftLabel = getShiftLabel(booking.shift_type);
+    const fullDayBadge = booking.is_full_day ? '<span class="bg-red-600 text-white text-xs px-3 py-1 rounded font-bold">FULL DAY BOOKING</span>' : '';
     
     container.innerHTML = `
         <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-6">
                 <div>
                     <h4 class="font-bold text-2xl text-gray-800 mb-2">${escapeHtml(booking.client_name)}</h4>
-                    <p class="text-base font-semibold" style="color: ${booking.color}">
+                    <p class="text-base font-semibold mb-2" style="color: ${booking.color}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
                         ${booking.start_time} - ${booking.end_time} ${shiftLabel}
                     </p>
+                    ${fullDayBadge}
                 </div>
             </div>
             
@@ -569,6 +582,17 @@ function handleDateClick(dateStr) {
     selectedDate = dateStr;
     const bookings = allBookings.filter(b => b.booking_date === dateStr);
     
+    // Check if date is in the past
+    const clickedDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    clickedDate.setHours(0, 0, 0, 0);
+    
+    if (clickedDate < today) {
+        showToast('Cannot create bookings for past dates', 'error');
+        return;
+    }
+    
     if (bookings.length === 0) {
         openAddModal(dateStr);
     } else if (bookings.length === 1) {
@@ -587,11 +611,12 @@ function openDateBookingsModal(dateStr, bookings) {
     const container = document.getElementById('dateBookingsList');
     container.innerHTML = bookings.map(booking => {
         const shiftLabel = getShiftLabel(booking.shift_type);
+        const fullDayBadge = booking.is_full_day ? '<span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold ml-2">FULL DAY</span>' : '';
         return `
         <div class="bg-gray-50 p-4 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-3">
                 <div>
-                    <h4 class="font-bold text-lg text-gray-800">${escapeHtml(booking.client_name)}</h4>
+                    <h4 class="font-bold text-lg text-gray-800">${escapeHtml(booking.client_name)} ${fullDayBadge}</h4>
                     <p class="text-sm font-semibold" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time} ${shiftLabel}</p>
                 </div>
             </div>
@@ -659,7 +684,8 @@ function openDateBookingsModal(dateStr, bookings) {
         </div>
     `;}).join('');
     
-    document.getElementById('addInViewButton').style.display = (bookings.length < 2) ? 'block' : 'none';
+    const hasFullDay = bookings.some(b => b.is_full_day);
+    document.getElementById('addInViewButton').style.display = (bookings.length < 2 && !hasFullDay) ? 'block' : 'none';
     
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -706,8 +732,9 @@ function openAddModal(dateStr = null) {
     document.getElementById('endTime').value = String(endTime.getHours()).padStart(2, '0') + ':' + 
                                                String(endTime.getMinutes()).padStart(2, '0');
     
-    // Reset advance given field
+    // Reset fields
     document.getElementById('advanceGiven').value = '';
+    document.getElementById('isFullDay').checked = false;
     
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -783,6 +810,7 @@ async function editBooking(bookingId) {
         document.getElementById('editMenuType').value = booking.menu_type || '';
         document.getElementById('editNoOfPacks').value = booking.no_of_packs || '';
         document.getElementById('editAdvanceGiven').value = booking.advance_given;
+        document.getElementById('editIsFullDay').checked = booking.is_full_day || false;
         
         const modal = document.getElementById('editBookingModal');
         const modalContent = modal.querySelector('.modal-content');
@@ -839,6 +867,7 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     const menuType = document.getElementById('menuType').value.trim();
     const noOfPacks = document.getElementById('noOfPacks').value.trim();
     const advanceGiven = document.getElementById('advanceGiven').value;
+    const isFullDay = document.getElementById('isFullDay').checked;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
@@ -890,7 +919,8 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
                 event_type: eventType,
                 menu_type: menuType,
                 no_of_packs: noOfPacks,
-                advance_given: advanceGiven
+                advance_given: advanceGiven,
+                is_full_day: isFullDay
             })
         });
 
@@ -931,6 +961,7 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     const menuType = document.getElementById('editMenuType').value.trim();
     const noOfPacks = document.getElementById('editNoOfPacks').value.trim();
     const advanceGiven = document.getElementById('editAdvanceGiven').value;
+    const isFullDay = document.getElementById('editIsFullDay').checked;
     
     if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
@@ -982,7 +1013,8 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
                 event_type: eventType,
                 menu_type: menuType,
                 no_of_packs: noOfPacks,
-                advance_given: advanceGiven
+                advance_given: advanceGiven,
+                is_full_day: isFullDay
             })
         });
 

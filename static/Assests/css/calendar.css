@@ -4,6 +4,16 @@
 }
 
 /* Animation Keyframes */
+@keyframes slideInTop {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideOutTop {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-100%); opacity: 0; }
+}
+
 @keyframes slideInBottom {
     from { transform: translateY(100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
@@ -60,13 +70,19 @@
 }
 
 /* Toast Notifications */
+#toastContainer {
+    z-index: 99999 !important;
+}
+
 .toast { 
-    animation: slideInBottom 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: slideInTop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 99999 !important;
 }
 
 .toast.hide { 
-    animation: slideOutBottom 0.3s ease-in;
+    animation: slideOutTop 0.3s ease-in;
 }
 
 .toast::after {
@@ -270,9 +286,10 @@
     color: #DAA520;
     font-weight: 600;
     margin-bottom: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    word-wrap: break-word;
+    line-height: 1.3;
 }
 
 .day-events {
@@ -484,21 +501,26 @@
 
 @media (max-width: 768px) {
     .calendar-grid {
-        grid-template-columns: repeat(7, minmax(60px, 1fr));
+        grid-template-columns: repeat(7, minmax(80px, 1fr));
     }
     
     .calendar-day {
-        min-height: 90px;
-        max-height: 90px;
-        padding: 6px;
+        min-height: 95px;
+        max-height: 95px;
+        padding: 6px 4px;
     }
     
     .day-number {
         font-size: 16px;
+        margin-bottom: 3px;
     }
     
     .day-nepali {
         font-size: 9px;
+        margin-bottom: 6px;
+        white-space: normal;
+        word-wrap: break-word;
+        line-height: 1.2;
     }
     
     .day-event {
@@ -526,21 +548,27 @@
 
 @media (max-width: 640px) {
     .calendar-grid {
-        grid-template-columns: repeat(7, minmax(40px, 1fr));
+        grid-template-columns: repeat(7, minmax(68px, 1fr));
     }
     
     .calendar-day {
-        min-height: 80px;
-        max-height: 80px;
-        padding: 4px;
+        min-height: 90px;
+        max-height: 90px;
+        padding: 5px 3px;
     }
     
     .day-number {
-        font-size: 14px;
+        font-size: 15px;
+        margin-bottom: 2px;
     }
     
     .day-nepali {
-        font-size: 8px;
+        font-size: 8.5px;
+        margin-bottom: 5px;
+        white-space: normal;
+        word-wrap: break-word;
+        line-height: 1.2;
+        max-height: 20px;
     }
     
     .day-event {
@@ -588,5 +616,41 @@
 
     .modal-backdrop {
         padding: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-grid {
+        grid-template-columns: repeat(7, minmax(54px, 1fr));
+    }
+    
+    .calendar-day {
+        min-height: 80px;
+        max-height: 80px;
+        padding: 4px 2px;
+    }
+    
+    .day-number {
+        font-size: 14px;
+        margin-bottom: 2px;
+    }
+    
+    .day-nepali {
+        font-size: 8px;
+        margin-bottom: 4px;
+        white-space: normal;
+        word-wrap: break-word;
+        line-height: 1.15;
+        max-height: 18px;
+    }
+    
+    .day-event {
+        font-size: 8px;
+        padding: 2px;
+    }
+    
+    .calendar-header {
+        font-size: 10px;
+        padding: 7px 1px;
     }
 }

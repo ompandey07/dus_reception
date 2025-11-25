@@ -158,7 +158,8 @@ def get_calendar_data(request):
                     'start_time': booking.start_time.strftime('%H:%M'),
                     'end_time': booking.end_time.strftime('%H:%M'),
                     'color': booking.get_time_color(),
-                    'shift_type': get_shift_type(booking.start_time, booking.end_time)
+                    'shift_type': get_shift_type(booking.start_time, booking.end_time),
+                    'is_full_day': booking.is_full_day
                 })
             
             calendar_days.append(day_data)
@@ -209,6 +210,7 @@ def get_bookings(request):
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'shift_type': get_shift_type(booking.start_time, booking.end_time),
+                'is_full_day': booking.is_full_day,
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -247,6 +249,7 @@ def get_booking_detail(request, booking_id):
             'advance_given': str(booking.advance_given),
             'color': booking.get_time_color(),
             'shift_type': get_shift_type(booking.start_time, booking.end_time),
+            'is_full_day': booking.is_full_day,
             'created_by': booking.get_creator_name(),
             'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -283,13 +286,31 @@ def create_booking(request):
         booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
         start_time = datetime.strptime(data['start_time'], '%H:%M').time()
         end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        is_full_day = data.get('is_full_day', False)
+        
+        # Prevent booking in past dates
+        if booking_date < date.today():
+            return JsonResponse({'error': 'Cannot create bookings for past dates'}, status=400)
         
         if end_time <= start_time:
             return JsonResponse({'error': 'End time must be after start time'}, status=400)
         
-        bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
-        if bookings_on_date >= 2:
-            return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
+        # Check if there's already a full day booking on this date
+        full_day_exists = Booking.objects.filter(booking_date=booking_date, is_full_day=True).exists()
+        if full_day_exists:
+            return JsonResponse({'error': 'This date already has a full day booking. No other bookings allowed.'}, status=400)
+        
+        # If this is a full day booking, check if there are any bookings on this date
+        if is_full_day:
+            existing_bookings = Booking.objects.filter(booking_date=booking_date).count()
+            if existing_bookings > 0:
+                return JsonResponse({'error': 'Cannot create full day booking. There are already bookings on this date.'}, status=400)
+        
+        # Check max 2 bookings per day (only if not full day)
+        if not is_full_day:
+            bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
+            if bookings_on_date >= 2:
+                return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
         
         created_by_user = None
         created_by_custom = None
@@ -315,6 +336,7 @@ def create_booking(request):
             menu_type=data.get('menu_type', ''),
             no_of_packs=data.get('no_of_packs', ''),
             advance_given=advance_given,
+            is_full_day=is_full_day,
             created_by_user=created_by_user,
             created_by_custom=created_by_custom
         )
@@ -324,7 +346,7 @@ def create_booking(request):
             'booking',
             entity_id=booking.id,
             entity_name=booking.client_name,
-            description=f'Created new booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})',
+            description=f'Created new booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})' + (' [FULL DAY]' if is_full_day else ''),
             request=request,
             performed_by_user=created_by_user,
             performed_by_custom=created_by_custom
@@ -350,6 +372,7 @@ def create_booking(request):
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'shift_type': get_shift_type(booking.start_time, booking.end_time),
+                'is_full_day': booking.is_full_day,
                 'created_by': booking.get_creator_name()
             }
         }, status=201)
@@ -370,11 +393,36 @@ def update_booking(request, booking_id):
             booking.client_name = data['client_name']
         if 'booking_date' in data:
             new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+            
+            # Prevent updating to past dates
+            if new_date < date.today() and booking.booking_date != new_date:
+                return JsonResponse({'error': 'Cannot update booking to past dates'}, status=400)
+            
             if new_date != booking.booking_date:
-                count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
-                if count >= 2:
-                    return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
+                # Check for full day bookings on new date
+                full_day_exists = Booking.objects.filter(
+                    booking_date=new_date, 
+                    is_full_day=True
+                ).exclude(id=booking_id).exists()
+                
+                if full_day_exists:
+                    return JsonResponse({'error': 'The new date already has a full day booking. No other bookings allowed.'}, status=400)
+                
+                # If updating to a full day booking, check for existing bookings
+                is_full_day = data.get('is_full_day', booking.is_full_day)
+                if is_full_day:
+                    existing_count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
+                    if existing_count > 0:
+                        return JsonResponse({'error': 'Cannot set as full day booking. There are already bookings on this date.'}, status=400)
+                
+                # Check max 2 bookings if not full day
+                if not is_full_day:
+                    count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
+                    if count >= 2:
+                        return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
+            
             booking.booking_date = new_date
+        
         if 'start_time' in data:
             booking.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
         if 'end_time' in data:
@@ -397,6 +445,17 @@ def update_booking(request, booking_id):
                 booking.advance_given = advance_given
             except (ValueError, TypeError):
                 return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
+        
+        if 'is_full_day' in data:
+            new_is_full_day = data['is_full_day']
+            # If changing to full day, check for other bookings
+            if new_is_full_day and not booking.is_full_day:
+                other_bookings = Booking.objects.filter(
+                    booking_date=booking.booking_date
+                ).exclude(id=booking_id).count()
+                if other_bookings > 0:
+                    return JsonResponse({'error': 'Cannot set as full day booking. There are already other bookings on this date.'}, status=400)
+            booking.is_full_day = new_is_full_day
         
         if booking.end_time <= booking.start_time:
             return JsonResponse({'error': 'End time must be after start time'}, status=400)
@@ -421,7 +480,7 @@ def update_booking(request, booking_id):
             'booking',
             entity_id=booking.id,
             entity_name=booking.client_name,
-            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})',
+            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})' + (' [FULL DAY]' if booking.is_full_day else ''),
             request=request,
             performed_by_user=performed_by_user,
             performed_by_custom=performed_by_custom
@@ -447,6 +506,7 @@ def update_booking(request, booking_id):
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'shift_type': get_shift_type(booking.start_time, booking.end_time),
+                'is_full_day': booking.is_full_day,
                 'created_by': booking.get_creator_name()
             }
         }, status=200)
@@ -529,6 +589,7 @@ def get_bookings_by_date(request, date_str):
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'shift_type': get_shift_type(booking.start_time, booking.end_time),
+                'is_full_day': booking.is_full_day,
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
