@@ -30,7 +30,6 @@ def get_client_ip(request):
 def log_activity(action, entity_type, entity_id=None, entity_name='', description='', request=None, performed_by_user=None, performed_by_custom=None):
     """
     Helper function to create activity logs
-    Usage: log_activity('create', 'booking', booking.id, booking.client_name, 'Created new booking', request)
     """
     try:
         ip_address = get_client_ip(request) if request else None
@@ -71,27 +70,14 @@ def get_nepali_date(english_date):
         return None
 
 
-def get_shift_type(start_time, end_time):
-    """Determine shift type based on start and end times - FLEXIBLE LOGIC"""
-    from datetime import time
-    
-    noon = time(12, 0)
-    afternoon_boundary = time(15, 0)
-    evening_threshold = time(18, 0)
-    
-    # Full day: starts before noon (12 PM) AND ends after 6 PM
-    # This covers: 7 AM - 9 PM, 8 AM - 8 PM, 6 AM - 9 PM, 11 AM - 7 PM, etc.
-    if start_time < noon and end_time > evening_threshold:
-        return 'fullday'
-    # Morning shift: ends at or before 3 PM
-    elif end_time <= afternoon_boundary:
-        return 'morning'
-    # Evening shift: starts at or after 3 PM
-    elif start_time >= afternoon_boundary:
-        return 'evening'
-    # Mixed or custom time
-    else:
-        return ''
+def get_time_slot_display(time_slot):
+    """Get display text for time slot"""
+    time_slot_map = {
+        'morning': '6 AM - 3 PM',
+        'evening': '3 PM - 9 PM',
+        'fullday': 'Full Day'
+    }
+    return time_slot_map.get(time_slot, time_slot)
 
 
 # ============================================================
@@ -104,13 +90,17 @@ def calendar_view(request):
     today = date.today()
     nepali_today = get_nepali_date(today)
     
-    # Get event type choices for dropdown
+    # Get choices for dropdowns
     event_types = Booking.EVENT_TYPE_CHOICES
+    menu_types = Booking.MENU_TYPE_CHOICES
+    time_slots = Booking.TIME_SLOT_CHOICES
     
     context = {
         'custom_users': custom_users,
         'today_nepali': nepali_today,
-        'event_types': event_types
+        'event_types': event_types,
+        'menu_types': menu_types,
+        'time_slots': time_slots
     }
     return render(request, 'Function/calendar.html', context)
 
@@ -155,11 +145,10 @@ def get_calendar_data(request):
                     'id': booking.id,
                     'client_name': booking.client_name,
                     'event_type': booking.get_event_type_display(),
-                    'start_time': booking.start_time.strftime('%H:%M'),
-                    'end_time': booking.end_time.strftime('%H:%M'),
+                    'time_slot': booking.time_slot,
+                    'time_slot_display': get_time_slot_display(booking.time_slot),
                     'color': booking.get_time_color(),
-                    'shift_type': get_shift_type(booking.start_time, booking.end_time),
-                    'is_full_day': booking.is_full_day
+                    'is_full_day': booking.is_full_day_booking()
                 })
             
             calendar_days.append(day_data)
@@ -199,18 +188,19 @@ def get_bookings(request):
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
                 'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
+                'time_slot': booking.time_slot,
+                'time_slot_display': get_time_slot_display(booking.time_slot),
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
                 'event_type_display': booking.get_event_type_display(),
                 'menu_type': booking.menu_type or '',
-                'no_of_packs': booking.no_of_packs or '',
+                'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
+                'no_of_pax': booking.no_of_pax or '',
+                'additional_pax': booking.additional_pax or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
-                'shift_type': get_shift_type(booking.start_time, booking.end_time),
-                'is_full_day': booking.is_full_day,
+                'is_full_day': booking.is_full_day_booking(),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -238,18 +228,19 @@ def get_booking_detail(request, booking_id):
             'nepali_year': nepali_date['year'] if nepali_date else '',
             'nepali_month': nepali_date['month_name'] if nepali_date else '',
             'nepali_day': nepali_date['day'] if nepali_date else '',
-            'start_time': booking.start_time.strftime('%H:%M'),
-            'end_time': booking.end_time.strftime('%H:%M'),
+            'time_slot': booking.time_slot,
+            'time_slot_display': get_time_slot_display(booking.time_slot),
             'phone_number': booking.phone_number,
             'email': booking.email or '',
             'event_type': booking.event_type,
             'event_type_display': booking.get_event_type_display(),
             'menu_type': booking.menu_type or '',
-            'no_of_packs': booking.no_of_packs or '',
+            'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
+            'no_of_pax': booking.no_of_pax or '',
+            'additional_pax': booking.additional_pax or '',
             'advance_given': str(booking.advance_given),
             'color': booking.get_time_color(),
-            'shift_type': get_shift_type(booking.start_time, booking.end_time),
-            'is_full_day': booking.is_full_day,
+            'is_full_day': booking.is_full_day_booking(),
             'created_by': booking.get_creator_name(),
             'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -269,7 +260,7 @@ def create_booking(request):
     try:
         data = json.loads(request.body)
         
-        required_fields = ['client_name', 'booking_date', 'start_time', 'end_time', 
+        required_fields = ['client_name', 'booking_date', 'time_slot', 
                           'phone_number', 'event_type', 'advance_given']
         for field in required_fields:
             if field not in data or data[field] == '' or data[field] is None:
@@ -284,19 +275,11 @@ def create_booking(request):
             return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
         
         booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
-        start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-        end_time = datetime.strptime(data['end_time'], '%H:%M').time()
-        is_full_day = data.get('is_full_day', False)
-        
-        # Prevent booking in past dates
-        if booking_date < date.today():
-            return JsonResponse({'error': 'Cannot create bookings for past dates'}, status=400)
-        
-        if end_time <= start_time:
-            return JsonResponse({'error': 'End time must be after start time'}, status=400)
+        time_slot = data['time_slot']
+        is_full_day = (time_slot == 'fullday')
         
         # Check if there's already a full day booking on this date
-        full_day_exists = Booking.objects.filter(booking_date=booking_date, is_full_day=True).exists()
+        full_day_exists = Booking.objects.filter(booking_date=booking_date, time_slot='fullday').exists()
         if full_day_exists:
             return JsonResponse({'error': 'This date already has a full day booking. No other bookings allowed.'}, status=400)
         
@@ -311,6 +294,11 @@ def create_booking(request):
             bookings_on_date = Booking.objects.filter(booking_date=booking_date).count()
             if bookings_on_date >= 2:
                 return JsonResponse({'error': 'Maximum 2 bookings per day'}, status=400)
+            
+            # Check if same time slot already exists
+            same_slot_exists = Booking.objects.filter(booking_date=booking_date, time_slot=time_slot).exists()
+            if same_slot_exists:
+                return JsonResponse({'error': f'A booking already exists for {get_time_slot_display(time_slot)} on this date'}, status=400)
         
         created_by_user = None
         created_by_custom = None
@@ -328,15 +316,14 @@ def create_booking(request):
         booking = Booking.objects.create(
             client_name=data['client_name'],
             booking_date=booking_date,
-            start_time=start_time,
-            end_time=end_time,
+            time_slot=time_slot,
             phone_number=data['phone_number'],
             email=data.get('email', ''),
             event_type=data['event_type'],
             menu_type=data.get('menu_type', ''),
-            no_of_packs=data.get('no_of_packs', ''),
+            no_of_pax=data.get('no_of_pax', ''),
+            additional_pax=data.get('additional_pax', ''),
             advance_given=advance_given,
-            is_full_day=is_full_day,
             created_by_user=created_by_user,
             created_by_custom=created_by_custom
         )
@@ -361,18 +348,19 @@ def create_booking(request):
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
                 'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
+                'time_slot': booking.time_slot,
+                'time_slot_display': get_time_slot_display(booking.time_slot),
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
                 'event_type_display': booking.get_event_type_display(),
                 'menu_type': booking.menu_type or '',
-                'no_of_packs': booking.no_of_packs or '',
+                'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
+                'no_of_pax': booking.no_of_pax or '',
+                'additional_pax': booking.additional_pax or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
-                'shift_type': get_shift_type(booking.start_time, booking.end_time),
-                'is_full_day': booking.is_full_day,
+                'is_full_day': booking.is_full_day_booking(),
                 'created_by': booking.get_creator_name()
             }
         }, status=201)
@@ -391,42 +379,45 @@ def update_booking(request, booking_id):
         
         if 'client_name' in data:
             booking.client_name = data['client_name']
+        
         if 'booking_date' in data:
             new_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
+            new_time_slot = data.get('time_slot', booking.time_slot)
+            new_is_full_day = (new_time_slot == 'fullday')
             
-            # Prevent updating to past dates
-            if new_date < date.today() and booking.booking_date != new_date:
-                return JsonResponse({'error': 'Cannot update booking to past dates'}, status=400)
-            
-            if new_date != booking.booking_date:
+            if new_date != booking.booking_date or new_time_slot != booking.time_slot:
                 # Check for full day bookings on new date
                 full_day_exists = Booking.objects.filter(
                     booking_date=new_date, 
-                    is_full_day=True
+                    time_slot='fullday'
                 ).exclude(id=booking_id).exists()
                 
                 if full_day_exists:
                     return JsonResponse({'error': 'The new date already has a full day booking. No other bookings allowed.'}, status=400)
                 
                 # If updating to a full day booking, check for existing bookings
-                is_full_day = data.get('is_full_day', booking.is_full_day)
-                if is_full_day:
+                if new_is_full_day:
                     existing_count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
                     if existing_count > 0:
                         return JsonResponse({'error': 'Cannot set as full day booking. There are already bookings on this date.'}, status=400)
                 
-                # Check max 2 bookings if not full day
-                if not is_full_day:
+                # Check max 2 bookings and same time slot
+                if not new_is_full_day:
                     count = Booking.objects.filter(booking_date=new_date).exclude(id=booking_id).count()
                     if count >= 2:
                         return JsonResponse({'error': 'Maximum 2 bookings per day on the new date'}, status=400)
+                    
+                    same_slot_exists = Booking.objects.filter(
+                        booking_date=new_date, 
+                        time_slot=new_time_slot
+                    ).exclude(id=booking_id).exists()
+                    if same_slot_exists:
+                        return JsonResponse({'error': f'A booking already exists for {get_time_slot_display(new_time_slot)} on this date'}, status=400)
             
             booking.booking_date = new_date
         
-        if 'start_time' in data:
-            booking.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
-        if 'end_time' in data:
-            booking.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+        if 'time_slot' in data:
+            booking.time_slot = data['time_slot']
         if 'phone_number' in data:
             booking.phone_number = data['phone_number']
         if 'email' in data:
@@ -435,8 +426,10 @@ def update_booking(request, booking_id):
             booking.event_type = data['event_type']
         if 'menu_type' in data:
             booking.menu_type = data['menu_type']
-        if 'no_of_packs' in data:
-            booking.no_of_packs = data['no_of_packs']
+        if 'no_of_pax' in data:
+            booking.no_of_pax = data['no_of_pax']
+        if 'additional_pax' in data:
+            booking.additional_pax = data['additional_pax']
         if 'advance_given' in data:
             try:
                 advance_given = float(data['advance_given'])
@@ -445,20 +438,6 @@ def update_booking(request, booking_id):
                 booking.advance_given = advance_given
             except (ValueError, TypeError):
                 return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
-        
-        if 'is_full_day' in data:
-            new_is_full_day = data['is_full_day']
-            # If changing to full day, check for other bookings
-            if new_is_full_day and not booking.is_full_day:
-                other_bookings = Booking.objects.filter(
-                    booking_date=booking.booking_date
-                ).exclude(id=booking_id).count()
-                if other_bookings > 0:
-                    return JsonResponse({'error': 'Cannot set as full day booking. There are already other bookings on this date.'}, status=400)
-            booking.is_full_day = new_is_full_day
-        
-        if booking.end_time <= booking.start_time:
-            return JsonResponse({'error': 'End time must be after start time'}, status=400)
         
         booking.save()
         
@@ -480,7 +459,7 @@ def update_booking(request, booking_id):
             'booking',
             entity_id=booking.id,
             entity_name=booking.client_name,
-            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})' + (' [FULL DAY]' if booking.is_full_day else ''),
+            description=f'Updated booking for {booking.client_name} on {booking.booking_date} ({booking.get_event_type_display()})' + (' [FULL DAY]' if booking.is_full_day_booking() else ''),
             request=request,
             performed_by_user=performed_by_user,
             performed_by_custom=performed_by_custom
@@ -495,18 +474,19 @@ def update_booking(request, booking_id):
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
                 'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
+                'time_slot': booking.time_slot,
+                'time_slot_display': get_time_slot_display(booking.time_slot),
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
                 'event_type_display': booking.get_event_type_display(),
                 'menu_type': booking.menu_type or '',
-                'no_of_packs': booking.no_of_packs or '',
+                'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
+                'no_of_pax': booking.no_of_pax or '',
+                'additional_pax': booking.additional_pax or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
-                'shift_type': get_shift_type(booking.start_time, booking.end_time),
-                'is_full_day': booking.is_full_day,
+                'is_full_day': booking.is_full_day_booking(),
                 'created_by': booking.get_creator_name()
             }
         }, status=200)
@@ -578,18 +558,19 @@ def get_bookings_by_date(request, date_str):
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
                 'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
+                'time_slot': booking.time_slot,
+                'time_slot_display': get_time_slot_display(booking.time_slot),
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
                 'event_type_display': booking.get_event_type_display(),
                 'menu_type': booking.menu_type or '',
-                'no_of_packs': booking.no_of_packs or '',
+                'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
+                'no_of_pax': booking.no_of_pax or '',
+                'additional_pax': booking.additional_pax or '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
-                'shift_type': get_shift_type(booking.start_time, booking.end_time),
-                'is_full_day': booking.is_full_day,
+                'is_full_day': booking.is_full_day_booking(),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })

@@ -10,7 +10,8 @@ class Booking(models.Model):
     """
     EVENT_TYPE_CHOICES = [
         ('wedding', 'Wedding'),
-        ('bartamanda', 'Bartamanda/Rice Feeding'),
+        ('bartamanda', 'Bartamanda'),
+        ('Rice Feeding', 'Rice Feeding'),
         ('conference', 'Conference'),
         ('birthday', 'Birthday Party'),
         ('anniversary', 'Anniversary'),
@@ -22,22 +23,29 @@ class Booking(models.Model):
         ('others', 'Others'),
     ]
     
-    phone_regex = RegexValidator(
-        regex=r'^\+?1?\d{9,15}$',
-        message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
-    )
+    MENU_TYPE_CHOICES = [
+        ('party', 'Party'),
+        ('newari_bhoj', 'Newari Bhoj'),
+        ('jabhu_bhoj', 'Jabhu Bhoj'),
+        ('others', 'Others'),
+    ]
+    
+    TIME_SLOT_CHOICES = [
+        ('morning', '6 AM - 3 PM'),
+        ('evening', '3 PM - 9 PM'),
+        ('fullday', 'Full Day'),
+    ]
     
     client_name = models.CharField(max_length=255)
     booking_date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    phone_number = models.CharField(validators=[phone_regex], max_length=17)
+    time_slot = models.CharField(max_length=20, choices=TIME_SLOT_CHOICES, default='morning')
+    phone_number = models.CharField(max_length=20)
     email = models.EmailField(blank=True, null=True)
     event_type = models.CharField(max_length=50, choices=EVENT_TYPE_CHOICES, default='others')
-    menu_type = models.CharField(max_length=255, blank=True, null=True, help_text="Type of menu/food arrangement")
-    no_of_packs = models.CharField(max_length=100, blank=True, null=True, help_text="Number of packs/guests")
+    menu_type = models.CharField(max_length=50, choices=MENU_TYPE_CHOICES, blank=True, null=True, help_text="Type of menu/food arrangement")
+    no_of_pax = models.CharField(max_length=100, blank=True, null=True, help_text="Number of pax/guests")
+    additional_pax = models.CharField(max_length=100, blank=True, null=True, help_text="Additional number of pax")
     advance_given = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    is_full_day = models.BooleanField(default=False, help_text="If checked, no other bookings allowed on this date")
     
     # Track who created this booking
     created_by_user = models.ForeignKey(
@@ -48,7 +56,7 @@ class Booking(models.Model):
         related_name='bookings_created'
     )
     created_by_custom = models.ForeignKey(
-        CustomUser,
+        'authapp.CustomUser',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -60,7 +68,7 @@ class Booking(models.Model):
     
     class Meta:
         db_table = 'bookings'
-        ordering = ['booking_date', 'start_time']
+        ordering = ['booking_date', 'time_slot']
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
     
@@ -76,31 +84,17 @@ class Booking(models.Model):
         return "System"
     
     def get_time_color(self):
-        """Get color based on booking time duration"""
-        if not self.start_time or not self.end_time:
-            return '#8b5cf6'  # Default purple
-        
-        from datetime import datetime, timedelta
-        start = datetime.combine(datetime.today(), self.start_time)
-        end = datetime.combine(datetime.today(), self.end_time)
-        duration = (end - start).total_seconds() / 3600  # Duration in hours
-        
-        # Color coding based on duration
-        if duration <= 2:
-            return '#10b981'  # Green - Short event
-        elif duration <= 4:
-            return '#f59e0b'  # Orange - Medium event
-        elif duration <= 6:
-            return '#ef4444'  # Red - Long event
+        """Get color based on time slot"""
+        if self.time_slot == 'morning':
+            return '#10b981'  # Green - Morning
+        elif self.time_slot == 'evening':
+            return '#f59e0b'  # Orange - Evening
         else:
-            return '#8b5cf6'  # Purple - Full day event
+            return '#8b5cf6'  # Purple - Full day
     
-    def clean(self):
-        """Validate that end_time is after start_time"""
-        from django.core.exceptions import ValidationError
-        if self.start_time and self.end_time and self.end_time <= self.start_time:
-            raise ValidationError('End time must be after start time.')
-
+    def is_full_day_booking(self):
+        """Check if this is a full day booking"""
+        return self.time_slot == 'fullday'
         
 
 

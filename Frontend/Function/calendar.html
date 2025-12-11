@@ -77,6 +77,17 @@
             color: #dc2626;
             user-select: none;
         }
+        
+        /* Hide number input arrows */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
@@ -132,7 +143,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 rounded bg-gradient-to-br from-amber-400 to-amber-500"></div>
-                        <span>Full Day (6 AM - 9 PM)</span>
+                        <span>Full Day</span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="w-6 h-6 rounded border-2 border-green-500"></div>
@@ -213,6 +224,15 @@
                     </div>
 
                     <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Time Slot *</label>
+                        <select id="timeSlot" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                            {% for value, display in time_slots %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Event Type *</label>
                         <select id="eventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
                             <option value="">Select Event Type</option>
@@ -223,18 +243,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">Start Time *</label>
-                        <input type="time" id="startTime" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">End Time *</label>
-                        <input type="time" id="endTime" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
-                    </div>
-
-                    <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Phone Number *</label>
-                        <input type="tel" id="phoneNumber" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="+9779812345678" required>
+                        <input type="number" id="phoneNumber" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="9812345678" required>
                     </div>
 
                     <div>
@@ -244,26 +254,28 @@
 
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Menu Type</label>
-                        <input type="text" id="menuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., Vegetarian, Non-Veg">
+                        <select id="menuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                            <option value="">Select Menu Type</option>
+                            {% for value, display in menu_types %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Packs</label>
-                        <input type="text" id="noOfPacks" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., 100 packs">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Pax</label>
+                        <input type="text" id="noOfPax" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., 100">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Additional No. of Pax</label>
+                        <input type="text" id="additionalPax" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" placeholder="e.g., 20">
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given (Rs.) *</label>
                         <input type="number" id="advanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" placeholder="Enter advance amount" required>
                         <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="isFullDay" name="isFullDay">
-                            <label for="isFullDay">Full Day Booking (No other bookings allowed on this date)</label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2">⚠️ Checking this will block the entire day for other bookings</p>
                     </div>
                 </div>
 
@@ -346,6 +358,15 @@
                     </div>
 
                     <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Time Slot *</label>
+                        <select id="editTimeSlot" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                            {% for value, display in time_slots %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Event Type *</label>
                         <select id="editEventType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
                             <option value="">Select Event Type</option>
@@ -356,18 +377,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">Start Time *</label>
-                        <input type="time" id="editStartTime" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">End Time *</label>
-                        <input type="time" id="editEndTime" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
-                    </div>
-
-                    <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Phone Number *</label>
-                        <input type="tel" id="editPhoneNumber" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
+                        <input type="number" id="editPhoneNumber" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" required>
                     </div>
 
                     <div>
@@ -377,26 +388,28 @@
 
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Menu Type</label>
-                        <input type="text" id="editMenuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                        <select id="editMenuType" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                            <option value="">Select Menu Type</option>
+                            {% for value, display in menu_types %}
+                            <option value="{{ value }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Packs</label>
-                        <input type="text" id="editNoOfPacks" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">No. of Pax</label>
+                        <input type="text" id="editNoOfPax" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2">Additional No. of Pax</label>
+                        <input type="text" id="editAdditionalPax" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all">
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-gray-700 text-sm font-semibold mb-2">Advance Given (Rs.) *</label>
                         <input type="number" id="editAdvanceGiven" class="input-field w-full px-4 py-3 border-2 border-gray-300 focus:border-purple-500 focus:outline-none transition-all" step="0.01" min="0" required>
                         <p class="text-xs text-gray-500 mt-1">* This field is mandatory</p>
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="editIsFullDay" name="editIsFullDay">
-                            <label for="editIsFullDay">Full Day Booking (No other bookings allowed on this date)</label>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2">⚠️ Checking this will block the entire day for other bookings</p>
                     </div>
                 </div>
 

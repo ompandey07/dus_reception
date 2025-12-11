@@ -15,11 +15,6 @@ window.addEventListener('load', function() {
     
     document.getElementById('creatorFilter').addEventListener('change', loadBookings);
     setupModalBackdropHandlers();
-    
-    // Set minimum date to today for date inputs
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('bookingDate').setAttribute('min', today);
-    document.getElementById('editBookingDate').setAttribute('min', today);
 });
 
 // Setup modal backdrop click handlers
@@ -115,9 +110,29 @@ function hidePreloader() {
     document.getElementById('topBarPreloader').classList.add('hide');
 }
 
-// Determine shift class based on shift type
-function getShiftClass(shiftType) {
-    switch(shiftType) {
+// Get time slot display text
+function getTimeSlotDisplay(timeSlot) {
+    const slotMap = {
+        'morning': '6 AM - 3 PM',
+        'evening': '3 PM - 9 PM',
+        'fullday': 'Full Day'
+    };
+    return slotMap[timeSlot] || timeSlot;
+}
+
+// Get time slot label for display
+function getTimeSlotLabel(timeSlot) {
+    const labelMap = {
+        'morning': '[Morning]',
+        'evening': '[Evening]',
+        'fullday': '[Full Day]'
+    };
+    return labelMap[timeSlot] || '';
+}
+
+// Determine shift class based on time slot
+function getShiftClass(timeSlot) {
+    switch(timeSlot) {
         case 'morning':
             return 'shift-morning';
         case 'evening':
@@ -130,26 +145,31 @@ function getShiftClass(shiftType) {
 }
 
 // Get combined shift classes for multiple bookings
+// Show full day color if: fullday time_slot OR 2 bookings on same date
 function getCombinedShiftClasses(bookings) {
     if (bookings.length === 0) return '';
-    if (bookings.length === 1) return getShiftClass(bookings[0].shift_type);
     
-    const shiftTypes = bookings.map(b => b.shift_type);
-    const hasMorning = shiftTypes.includes('morning');
-    const hasEvening = shiftTypes.includes('evening');
-    const hasFullday = shiftTypes.includes('fullday');
-    
-    if (hasFullday) {
+    // If 2 or more bookings, treat as full day (fully booked)
+    if (bookings.length >= 2) {
         return 'shift-fullday';
-    } else if (hasMorning && hasEvening) {
-        return 'has-multiple-shifts';
-    } else if (hasMorning) {
-        return 'shift-morning';
-    } else if (hasEvening) {
-        return 'shift-evening';
+    }
+    
+    // Single booking - check if it's fullday
+    if (bookings.length === 1) {
+        if (bookings[0].time_slot === 'fullday' || bookings[0].is_full_day) {
+            return 'shift-fullday';
+        }
+        return getShiftClass(bookings[0].time_slot);
     }
     
     return '';
+}
+
+// Check if date is fully booked (fullday slot or 2 bookings)
+function isDateFullyBooked(bookings) {
+    if (bookings.length >= 2) return true;
+    if (bookings.length === 1 && (bookings[0].time_slot === 'fullday' || bookings[0].is_full_day)) return true;
+    return false;
 }
 
 // Load month data with Nepali dates from backend
@@ -249,15 +269,13 @@ function renderCalendar() {
         
         const dayBookings = allBookings.filter(b => b.booking_date === localDateStr);
         const hasBooking = dayBookings.length > 0;
-        const bookingCount = dayBookings.length;
-        const hasFullDayBooking = dayBookings.some(b => b.is_full_day);
         
         let classes = 'calendar-day';
         if (isOtherMonth) classes += ' other-month';
         if (isToday) classes += ' today';
         if (hasBooking) {
             classes += ' has-booking';
-            // Add shift-based styling
+            // Add shift-based styling (will show fullday if 2 bookings or fullday slot)
             const shiftClass = getCombinedShiftClasses(dayBookings);
             if (shiftClass) classes += ' ' + shiftClass;
         }
@@ -267,12 +285,13 @@ function renderCalendar() {
         if (hasBooking) {
             dayBookings.forEach((booking, idx) => {
                 if (idx < 2) {
-                    const shiftLabel = getShiftLabel(booking.shift_type);
-                    const fullDayBadge = booking.is_full_day ? '<span style="background: #dc2626; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">FULL DAY</span>' : '';
+                    const slotLabel = getTimeSlotLabel(booking.time_slot);
+                    const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
+                    const fullDayBadge = isFullDay ? '<span style="background: #dc2626; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">FULL DAY</span>' : '';
                     eventsHTML += `
                         <div class="day-event" 
                              style="border-left: 3px solid ${booking.color}; padding-left: 6px;" 
-                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.start_time}-${booking.end_time}) ${shiftLabel}${booking.is_full_day ? ' [FULL DAY]' : ''}">
+                             title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.time_slot_display || getTimeSlotDisplay(booking.time_slot)}) ${slotLabel}">
                             ${escapeHtml(booking.client_name)}${fullDayBadge}
                         </div>
                     `;
@@ -297,19 +316,6 @@ function renderCalendar() {
     const calendarGrid = document.querySelector('.calendar-grid');
     if (calendarGrid) {
         calendarGrid.innerHTML = calendarHTML;
-    }
-}
-
-function getShiftLabel(shiftType) {
-    switch(shiftType) {
-        case 'morning':
-            return '[Morning]';
-        case 'evening':
-            return '[Evening]';
-        case 'fullday':
-            return '[Full Day]';
-        default:
-            return '';
     }
 }
 
@@ -361,8 +367,8 @@ function renderBookingsList() {
     const countEl = document.getElementById('bookingCount');
     
     const sortedBookings = [...allBookings].sort((a, b) => {
-        const dateA = new Date(a.booking_date + 'T' + a.start_time);
-        const dateB = new Date(b.booking_date + 'T' + b.start_time);
+        const dateA = new Date(a.booking_date);
+        const dateB = new Date(b.booking_date);
         return dateA - dateB;
     });
     
@@ -380,12 +386,16 @@ function renderBookingsList() {
     }
     
     container.innerHTML = upcomingBookings.slice(0, 10).map(booking => {
-        const fullDayBadge = booking.is_full_day ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">FULL DAY</span>' : '';
+        const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
+        const fullDayBadge = isFullDay ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">FULL DAY</span>' : '';
+        const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+        const slotLabel = getTimeSlotLabel(booking.time_slot);
+        
         return `
         <div class="booking-card" style="border-left: 4px solid ${booking.color}">
             <div class="booking-card-header">
                 <div class="booking-client">${escapeHtml(booking.client_name)} ${fullDayBadge}</div>
-                <div class="booking-time" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time}</div>
+                <div class="booking-time" style="color: ${booking.color}">${timeSlotDisplay}</div>
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -394,7 +404,7 @@ function renderBookingsList() {
                     <line x1="8" x2="8" y1="2" y2="6"></line>
                     <line x1="3" x2="21" y1="10" y2="10"></line>
                 </svg>
-                ${formatDate(booking.booking_date)} ${getShiftLabel(booking.shift_type)}
+                ${formatDate(booking.booking_date)} ${slotLabel}
             </div>
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -403,6 +413,27 @@ function renderBookingsList() {
                 </svg>
                 ${escapeHtml(booking.event_type_display)}
             </div>
+            ${booking.menu_type_display ? `
+            <div class="booking-detail">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
+                    <path d="M7 2v20"></path>
+                    <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>
+                </svg>
+                ${escapeHtml(booking.menu_type_display)}
+            </div>
+            ` : ''}
+            ${booking.no_of_pax ? `
+            <div class="booking-detail">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Pax: ${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}
+            </div>
+            ` : ''}
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
@@ -460,11 +491,10 @@ async function viewBookingDetail(bookingId) {
             const booking = data.booking;
             selectedDate = booking.booking_date;
             const dayBookings = allBookings.filter(b => b.booking_date === selectedDate);
-            const bookingCount = dayBookings.length;
-            const hasFullDay = dayBookings.some(b => b.is_full_day);
+            const fullyBooked = isDateFullyBooked(dayBookings);
             openDetailModal(booking);
-            // Hide add button if there's a full day booking or max 2 bookings reached
-            document.getElementById('addInViewButton').style.display = (bookingCount < 2 && !hasFullDay) ? 'block' : 'none';
+            // Hide add button if fully booked (2 bookings or fullday)
+            document.getElementById('addInViewButton').style.display = fullyBooked ? 'none' : 'block';
         } else {
             showToast('Failed to load booking details', 'error');
         }
@@ -483,8 +513,10 @@ function openDetailModal(booking) {
     document.getElementById('selectedDateDisplay').textContent = `${booking.booking_date_formatted} (${booking.booking_date_nepali})`;
     
     const container = document.getElementById('dateBookingsList');
-    const shiftLabel = getShiftLabel(booking.shift_type);
-    const fullDayBadge = booking.is_full_day ? '<span class="bg-red-600 text-white text-xs px-3 py-1 rounded font-bold">FULL DAY BOOKING</span>' : '';
+    const slotLabel = getTimeSlotLabel(booking.time_slot);
+    const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+    const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
+    const fullDayBadge = isFullDay ? '<span class="bg-red-600 text-white text-xs px-3 py-1 rounded font-bold">FULL DAY BOOKING</span>' : '';
     
     container.innerHTML = `
         <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4" style="border-color: ${booking.color}">
@@ -496,7 +528,7 @@ function openDetailModal(booking) {
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        ${booking.start_time} - ${booking.end_time} ${shiftLabel}
+                        ${timeSlotDisplay} ${slotLabel}
                     </p>
                     ${fullDayBadge}
                 </div>
@@ -525,16 +557,22 @@ function openDetailModal(booking) {
                     <p class="detail-value">${escapeHtml(booking.email)}</p>
                 </div>
                 ` : ''}
-                ${booking.menu_type ? `
+                ${booking.menu_type_display ? `
                 <div class="detail-item">
                     <p class="detail-label">Menu Type</p>
-                    <p class="detail-value">${escapeHtml(booking.menu_type)}</p>
+                    <p class="detail-value">${escapeHtml(booking.menu_type_display)}</p>
                 </div>
                 ` : ''}
-                ${booking.no_of_packs ? `
+                ${booking.no_of_pax ? `
                 <div class="detail-item">
-                    <p class="detail-label">No. of Packs</p>
-                    <p class="detail-value">${escapeHtml(booking.no_of_packs)}</p>
+                    <p class="detail-label">No. of Pax</p>
+                    <p class="detail-value">${escapeHtml(booking.no_of_pax)}</p>
+                </div>
+                ` : ''}
+                ${booking.additional_pax ? `
+                <div class="detail-item">
+                    <p class="detail-label">Additional Pax</p>
+                    <p class="detail-value">${escapeHtml(booking.additional_pax)}</p>
                 </div>
                 ` : ''}
                 <div class="detail-item">
@@ -581,23 +619,18 @@ function openDetailModal(booking) {
 function handleDateClick(dateStr) {
     selectedDate = dateStr;
     const bookings = allBookings.filter(b => b.booking_date === dateStr);
-    
-    // Check if date is in the past
-    const clickedDate = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    clickedDate.setHours(0, 0, 0, 0);
-    
-    if (clickedDate < today) {
-        showToast('Cannot create bookings for past dates', 'error');
-        return;
-    }
+    const fullyBooked = isDateFullyBooked(bookings);
     
     if (bookings.length === 0) {
         openAddModal(dateStr);
-    } else if (bookings.length === 1) {
+    } else if (bookings.length === 1 && !fullyBooked) {
+        // Single booking that's not fullday - can view and potentially add more
+        viewBookingDetail(bookings[0].id);
+    } else if (bookings.length === 1 && fullyBooked) {
+        // Single fullday booking - just view
         viewBookingDetail(bookings[0].id);
     } else {
+        // Multiple bookings - show all
         openDateBookingsModal(dateStr, bookings);
     }
 }
@@ -605,19 +638,23 @@ function handleDateClick(dateStr) {
 function openDateBookingsModal(dateStr, bookings) {
     const modal = document.getElementById('viewBookingsModal');
     const modalContent = modal.querySelector('.modal-content');
+    const fullyBooked = isDateFullyBooked(bookings);
     
     document.getElementById('selectedDateDisplay').textContent = `${formatDate(dateStr)} - ${bookings.length} Bookings`;
     
     const container = document.getElementById('dateBookingsList');
     container.innerHTML = bookings.map(booking => {
-        const shiftLabel = getShiftLabel(booking.shift_type);
-        const fullDayBadge = booking.is_full_day ? '<span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold ml-2">FULL DAY</span>' : '';
+        const slotLabel = getTimeSlotLabel(booking.time_slot);
+        const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+        const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
+        const fullDayBadge = isFullDay ? '<span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold ml-2">FULL DAY</span>' : '';
+        
         return `
         <div class="bg-gray-50 p-4 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-3">
                 <div>
                     <h4 class="font-bold text-lg text-gray-800">${escapeHtml(booking.client_name)} ${fullDayBadge}</h4>
-                    <p class="text-sm font-semibold" style="color: ${booking.color}">${booking.start_time} - ${booking.end_time} ${shiftLabel}</p>
+                    <p class="text-sm font-semibold" style="color: ${booking.color}">${timeSlotDisplay} ${slotLabel}</p>
                 </div>
             </div>
             
@@ -636,16 +673,16 @@ function openDateBookingsModal(dateStr, bookings) {
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.email)}</p>
                 </div>
                 ` : ''}
-                ${booking.menu_type ? `
+                ${booking.menu_type_display ? `
                 <div>
                     <p class="text-gray-600">Menu Type:</p>
-                    <p class="font-semibold text-gray-800">${escapeHtml(booking.menu_type)}</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.menu_type_display)}</p>
                 </div>
                 ` : ''}
-                ${booking.no_of_packs ? `
+                ${booking.no_of_pax ? `
                 <div>
-                    <p class="text-gray-600">No. of Packs:</p>
-                    <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_packs)}</p>
+                    <p class="text-gray-600">No. of Pax:</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}</p>
                 </div>
                 ` : ''}
                 <div>
@@ -684,8 +721,8 @@ function openDateBookingsModal(dateStr, bookings) {
         </div>
     `;}).join('');
     
-    const hasFullDay = bookings.some(b => b.is_full_day);
-    document.getElementById('addInViewButton').style.display = (bookings.length < 2 && !hasFullDay) ? 'block' : 'none';
+    // Hide add button if fully booked
+    document.getElementById('addInViewButton').style.display = fullyBooked ? 'none' : 'block';
     
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -706,6 +743,7 @@ function formatDate(dateString) {
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
@@ -722,19 +760,19 @@ function openAddModal(dateStr = null) {
     const today = now.getFullYear() + '-' + 
                   String(now.getMonth() + 1).padStart(2, '0') + '-' + 
                   String(now.getDate()).padStart(2, '0');
-    const currentTime = String(now.getHours()).padStart(2, '0') + ':' + 
-                        String(now.getMinutes()).padStart(2, '0');
     
     document.getElementById('bookingDate').value = dateStr || today;
-    document.getElementById('startTime').value = currentTime;
-    
-    const endTime = new Date(now.getTime() + 60 * 60 * 1000);
-    document.getElementById('endTime').value = String(endTime.getHours()).padStart(2, '0') + ':' + 
-                                               String(endTime.getMinutes()).padStart(2, '0');
+    document.getElementById('timeSlot').value = 'morning';
     
     // Reset fields
+    document.getElementById('clientName').value = '';
+    document.getElementById('phoneNumber').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('eventType').value = '';
+    document.getElementById('menuType').value = '';
+    document.getElementById('noOfPax').value = '';
+    document.getElementById('additionalPax').value = '';
     document.getElementById('advanceGiven').value = '';
-    document.getElementById('isFullDay').checked = false;
     
     modal.classList.remove('hidden', 'closing');
     modal.classList.add('flex');
@@ -802,15 +840,14 @@ async function editBooking(bookingId) {
         document.getElementById('editBookingId').value = booking.id;
         document.getElementById('editClientName').value = booking.client_name;
         document.getElementById('editBookingDate').value = booking.booking_date;
-        document.getElementById('editStartTime').value = booking.start_time;
-        document.getElementById('editEndTime').value = booking.end_time;
+        document.getElementById('editTimeSlot').value = booking.time_slot;
         document.getElementById('editPhoneNumber').value = booking.phone_number;
         document.getElementById('editEmail').value = booking.email || '';
         document.getElementById('editEventType').value = booking.event_type;
         document.getElementById('editMenuType').value = booking.menu_type || '';
-        document.getElementById('editNoOfPacks').value = booking.no_of_packs || '';
+        document.getElementById('editNoOfPax').value = booking.no_of_pax || '';
+        document.getElementById('editAdditionalPax').value = booking.additional_pax || '';
         document.getElementById('editAdvanceGiven').value = booking.advance_given;
-        document.getElementById('editIsFullDay').checked = booking.is_full_day || false;
         
         const modal = document.getElementById('editBookingModal');
         const modalContent = modal.querySelector('.modal-content');
@@ -854,22 +891,22 @@ async function deleteBooking(bookingId, clientName) {
     }
 }
 
+// Add Booking Form Submit
 document.getElementById('addBookingForm').addEventListener('submit', async function(event) {
     event.preventDefault();
     
     const clientName = document.getElementById('clientName').value.trim();
     const bookingDate = document.getElementById('bookingDate').value;
-    const startTime = document.getElementById('startTime').value;
-    const endTime = document.getElementById('endTime').value;
+    const timeSlot = document.getElementById('timeSlot').value;
     const phoneNumber = document.getElementById('phoneNumber').value.trim();
     const email = document.getElementById('email').value.trim();
     const eventType = document.getElementById('eventType').value;
-    const menuType = document.getElementById('menuType').value.trim();
-    const noOfPacks = document.getElementById('noOfPacks').value.trim();
+    const menuType = document.getElementById('menuType').value;
+    const noOfPax = document.getElementById('noOfPax').value.trim();
+    const additionalPax = document.getElementById('additionalPax').value.trim();
     const advanceGiven = document.getElementById('advanceGiven').value;
-    const isFullDay = document.getElementById('isFullDay').checked;
     
-    if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
+    if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
         return;
     }
@@ -884,11 +921,6 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     if (parseFloat(advanceGiven) < 0) {
         showToast('Advance amount cannot be negative', 'error');
         document.getElementById('advanceGiven').focus();
-        return;
-    }
-    
-    if (endTime <= startTime) {
-        showToast('End time must be after start time', 'error');
         return;
     }
     
@@ -912,15 +944,14 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
             body: JSON.stringify({
                 client_name: clientName,
                 booking_date: bookingDate,
-                start_time: startTime,
-                end_time: endTime,
+                time_slot: timeSlot,
                 phone_number: phoneNumber,
                 email: email,
                 event_type: eventType,
                 menu_type: menuType,
-                no_of_packs: noOfPacks,
-                advance_given: advanceGiven,
-                is_full_day: isFullDay
+                no_of_pax: noOfPax,
+                additional_pax: additionalPax,
+                advance_given: advanceGiven
             })
         });
 
@@ -947,23 +978,23 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     }
 });
 
+// Edit Booking Form Submit
 document.getElementById('editBookingForm').addEventListener('submit', async function(event) {
     event.preventDefault();
     
     const bookingId = document.getElementById('editBookingId').value;
     const clientName = document.getElementById('editClientName').value.trim();
     const bookingDate = document.getElementById('editBookingDate').value;
-    const startTime = document.getElementById('editStartTime').value;
-    const endTime = document.getElementById('editEndTime').value;
+    const timeSlot = document.getElementById('editTimeSlot').value;
     const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
     const email = document.getElementById('editEmail').value.trim();
     const eventType = document.getElementById('editEventType').value;
-    const menuType = document.getElementById('editMenuType').value.trim();
-    const noOfPacks = document.getElementById('editNoOfPacks').value.trim();
+    const menuType = document.getElementById('editMenuType').value;
+    const noOfPax = document.getElementById('editNoOfPax').value.trim();
+    const additionalPax = document.getElementById('editAdditionalPax').value.trim();
     const advanceGiven = document.getElementById('editAdvanceGiven').value;
-    const isFullDay = document.getElementById('editIsFullDay').checked;
     
-    if (!clientName || !bookingDate || !startTime || !endTime || !phoneNumber || !eventType) {
+    if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
         showToast('Please fill all required fields', 'error');
         return;
     }
@@ -978,11 +1009,6 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     if (parseFloat(advanceGiven) < 0) {
         showToast('Advance amount cannot be negative', 'error');
         document.getElementById('editAdvanceGiven').focus();
-        return;
-    }
-    
-    if (endTime <= startTime) {
-        showToast('End time must be after start time', 'error');
         return;
     }
     
@@ -1006,15 +1032,14 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
             body: JSON.stringify({
                 client_name: clientName,
                 booking_date: bookingDate,
-                start_time: startTime,
-                end_time: endTime,
+                time_slot: timeSlot,
                 phone_number: phoneNumber,
                 email: email,
                 event_type: eventType,
                 menu_type: menuType,
-                no_of_packs: noOfPacks,
-                advance_given: advanceGiven,
-                is_full_day: isFullDay
+                no_of_pax: noOfPax,
+                additional_pax: additionalPax,
+                advance_given: advanceGiven
             })
         });
 
@@ -1041,15 +1066,19 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     }
 });
 
+// Initialize floating add button
 document.addEventListener('DOMContentLoaded', function() {
-    const floatingBtn = document.createElement('div');
-    floatingBtn.className = 'add-booking-btn';
-    floatingBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" x2="12" y1="5" y2="19"></line>
-            <line x1="5" x2="19" y1="12" y2="12"></line>
-        </svg>
-    `;
-    floatingBtn.onclick = () => openAddModal();
-    document.body.appendChild(floatingBtn);
+    const existingBtn = document.querySelector('.add-booking-btn');
+    if (!existingBtn) {
+        const floatingBtn = document.createElement('div');
+        floatingBtn.className = 'add-booking-btn';
+        floatingBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" x2="12" y1="5" y2="19"></line>
+                <line x1="5" x2="19" y1="12" y2="12"></line>
+            </svg>
+        `;
+        floatingBtn.onclick = () => openAddModal();
+        document.body.appendChild(floatingBtn);
+    }
 });
