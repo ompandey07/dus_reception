@@ -179,6 +179,17 @@
                     </select>
                 </div>
 
+                <!-- Time Slot Filter -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Time Slot</label>
+                    <select id="timeSlotFilter" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                        <option value="">All Time Slots</option>
+                        {% for slot_key, slot_label in time_slots %}
+                        <option value="{{ slot_key }}">{{ slot_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- Created By Filter -->
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Created By</label>
@@ -203,10 +214,10 @@
                 </div>
 
                 <!-- Search -->
-                <div class="sm:col-span-2">
+                <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Search</label>
                     <div class="relative">
-                        <input type="text" id="searchInput" placeholder="Search client name, phone, email, menu..." class="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                        <input type="text" id="searchInput" placeholder="Search client, phone, email..." class="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
                         <i class="ri-search-line absolute left-3 top-3 text-gray-400"></i>
                     </div>
                 </div>
@@ -253,10 +264,10 @@
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Client Name</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Event Type</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden lg:table-cell">Booking Date</th>
-                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Time</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Time Slot</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden md:table-cell">Phone</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden xl:table-cell">Menu Type</th>
-                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden xl:table-cell">Packs</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden xl:table-cell">Pax</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Advance</th>
                                 <th class="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider hidden 2xl:table-cell">Created By</th>
                             </tr>
@@ -314,6 +325,17 @@
         closeMenu.addEventListener('click', closeSidebar);
         overlay.addEventListener('click', closeSidebar);
 
+        // Get badge color based on time slot
+        function getTimeSlotBadge(timeSlot, displayText) {
+            const colors = {
+                'morning': 'bg-green-100 text-green-700',
+                'evening': 'bg-orange-100 text-orange-700',
+                'fullday': 'bg-purple-100 text-purple-700'
+            };
+            const colorClass = colors[timeSlot] || 'bg-gray-100 text-gray-700';
+            return `<span class="${colorClass} px-2 py-1 text-xs font-semibold">${displayText}</span>`;
+        }
+
         // Load Bookings Report
         async function loadBookings(page = 1) {
             const loadingState = document.getElementById('loadingState');
@@ -339,6 +361,7 @@
                 const dateFrom = document.getElementById('dateFrom').value;
                 const dateTo = document.getElementById('dateTo').value;
                 const eventType = document.getElementById('eventTypeFilter').value;
+                const timeSlot = document.getElementById('timeSlotFilter').value;
                 const createdBy = document.getElementById('createdByFilter').value;
                 const minAdvance = document.getElementById('minAdvance').value;
                 const maxAdvance = document.getElementById('maxAdvance').value;
@@ -347,6 +370,7 @@
                 if (dateFrom) params.append('date_from', dateFrom);
                 if (dateTo) params.append('date_to', dateTo);
                 if (eventType) params.append('event_type', eventType);
+                if (timeSlot) params.append('time_slot', timeSlot);
                 if (createdBy) params.append('created_by', createdBy);
                 if (minAdvance) params.append('min_advance', minAdvance);
                 if (maxAdvance) params.append('max_advance', maxAdvance);
@@ -402,8 +426,7 @@
                             </div>
                         </td>
                         <td class="px-4 py-4 text-sm text-gray-600">
-                            <div><i class="ri-time-line mr-1"></i>${booking.start_time}</div>
-                            <div class="text-xs text-gray-500">to ${booking.end_time}</div>
+                            ${getTimeSlotBadge(booking.time_slot, booking.time_slot_display)}
                         </td>
                         <td class="px-4 py-4 text-sm text-gray-600 hidden md:table-cell">
                             <i class="ri-phone-line mr-1"></i>${booking.phone_number}
@@ -412,7 +435,7 @@
                             ${booking.menu_type ? `<i class="ri-restaurant-line text-orange-600 mr-1"></i>${booking.menu_type}` : '<span class="text-gray-400">-</span>'}
                         </td>
                         <td class="px-4 py-4 text-sm text-gray-600 hidden xl:table-cell text-center">
-                            ${booking.no_of_packs ? `<span class="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-semibold">${booking.no_of_packs}</span>` : '<span class="text-gray-400">-</span>'}
+                            ${booking.no_of_pax ? `<span class="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-semibold">${booking.no_of_pax}</span>` : '<span class="text-gray-400">-</span>'}
                         </td>
                         <td class="px-4 py-4">
                             <span class="gradient-green text-white px-3 py-1.5 text-xs font-bold shadow-md">
@@ -490,12 +513,14 @@
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
             const eventType = document.getElementById('eventTypeFilter').value;
+            const timeSlot = document.getElementById('timeSlotFilter').value;
             const createdBy = document.getElementById('createdByFilter').value;
             const search = document.getElementById('searchInput').value;
 
             if (dateFrom) params.append('date_from', dateFrom);
             if (dateTo) params.append('date_to', dateTo);
             if (eventType) params.append('event_type', eventType);
+            if (timeSlot) params.append('time_slot', timeSlot);
             if (createdBy) params.append('created_by', createdBy);
             if (search) params.append('search', search);
 
@@ -512,6 +537,7 @@
             document.getElementById('dateFrom').value = '';
             document.getElementById('dateTo').value = '';
             document.getElementById('eventTypeFilter').value = '';
+            document.getElementById('timeSlotFilter').value = '';
             document.getElementById('createdByFilter').value = '';
             document.getElementById('minAdvance').value = '';
             document.getElementById('maxAdvance').value = '';

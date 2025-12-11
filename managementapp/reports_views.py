@@ -24,9 +24,13 @@ def booking_reports_view(request):
     # Get event types for filter
     event_types = Booking.objects.values_list('event_type', flat=True).distinct()
     
+    # Get time slots for filter
+    time_slots = Booking.TIME_SLOT_CHOICES
+    
     context = {
         'custom_users': custom_users,
         'event_types': event_types,
+        'time_slots': time_slots,
         'today': today
     }
     return render(request, 'admin/booking_reports.html', context)
@@ -44,6 +48,7 @@ def get_booking_reports(request):
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
         event_type = request.GET.get('event_type', None)
+        time_slot = request.GET.get('time_slot', None)
         created_by_filter = request.GET.get('created_by', None)
         search = request.GET.get('search', None)
         min_advance = request.GET.get('min_advance', None)
@@ -59,6 +64,8 @@ def get_booking_reports(request):
             bookings = bookings.filter(booking_date__lte=date_to)
         if event_type:
             bookings = bookings.filter(event_type=event_type)
+        if time_slot:
+            bookings = bookings.filter(time_slot=time_slot)
         if min_advance:
             bookings = bookings.filter(advance_given__gte=min_advance)
         if max_advance:
@@ -84,7 +91,7 @@ def get_booking_reports(request):
             )
         
         # Order by booking date descending
-        bookings = bookings.order_by('-booking_date', '-start_time')
+        bookings = bookings.order_by('-booking_date', 'time_slot')
         
         # Calculate statistics before pagination
         total_bookings = bookings.count()
@@ -106,19 +113,22 @@ def get_booking_reports(request):
             from .views import get_nepali_date
             nepali_date = get_nepali_date(booking.booking_date)
             
+            # Get time slot display
+            time_slot_display = dict(Booking.TIME_SLOT_CHOICES).get(booking.time_slot, booking.time_slot)
+            
             bookings_data.append({
                 'id': booking.id,
                 'client_name': booking.client_name,
                 'booking_date': booking.booking_date.strftime('%Y-%m-%d'),
                 'booking_date_formatted': booking.booking_date.strftime('%B %d, %Y'),
                 'booking_date_nepali': nepali_date['formatted_nepali'] if nepali_date else '',
-                'start_time': booking.start_time.strftime('%H:%M'),
-                'end_time': booking.end_time.strftime('%H:%M'),
+                'time_slot': booking.time_slot,
+                'time_slot_display': time_slot_display,
                 'phone_number': booking.phone_number,
                 'email': booking.email or '',
                 'event_type': booking.event_type,
                 'menu_type': booking.menu_type or '',
-                'no_of_packs': booking.no_of_packs or '',
+                'no_of_pax': booking.no_of_pax or '',
                 'advance_given': float(booking.advance_given),
                 'created_by': booking.get_creator_name(),
                 'created_at': booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -191,6 +201,7 @@ def export_booking_reports(request):
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
         event_type = request.GET.get('event_type', None)
+        time_slot = request.GET.get('time_slot', None)
         created_by_filter = request.GET.get('created_by', None)
         search = request.GET.get('search', None)
         
@@ -203,6 +214,8 @@ def export_booking_reports(request):
             bookings = bookings.filter(booking_date__lte=date_to)
         if event_type:
             bookings = bookings.filter(event_type=event_type)
+        if time_slot:
+            bookings = bookings.filter(time_slot=time_slot)
         if created_by_filter:
             if created_by_filter.startswith('user_'):
                 user_id = created_by_filter.replace('user_', '')
@@ -219,7 +232,7 @@ def export_booking_reports(request):
                 Q(menu_type__icontains=search)
             )
         
-        bookings = bookings.order_by('-booking_date', '-start_time')
+        bookings = bookings.order_by('-booking_date', 'time_slot')
         
         # Create Excel workbook
         wb = openpyxl.Workbook()
@@ -243,9 +256,9 @@ def export_booking_reports(request):
         
         # Define headers
         headers = [
-            'Client Name', 'Booking Date', 'Start Time', 'End Time', 
+            'Client Name', 'Booking Date', 'Time Slot', 
             'Phone Number', 'Email', 'Event Type', 'Menu Type', 
-            'No. of Packs', 'Advance Given', 'Created By', 'Created At'
+            'No. of Pax', 'Advance Given', 'Created By', 'Created At'
         ]
         
         # Write headers
@@ -262,16 +275,17 @@ def export_booking_reports(request):
         
         # Write data
         for row_num, booking in enumerate(bookings, 2):
+            time_slot_display = dict(Booking.TIME_SLOT_CHOICES).get(booking.time_slot, booking.time_slot)
+            
             data = [
                 booking.client_name,
                 booking.booking_date.strftime('%Y-%m-%d'),
-                booking.start_time.strftime('%H:%M'),
-                booking.end_time.strftime('%H:%M'),
+                time_slot_display,
                 booking.phone_number,
                 booking.email or '',
                 booking.event_type,
                 booking.menu_type or '',
-                booking.no_of_packs or '',
+                booking.no_of_pax or '',
                 float(booking.advance_given),
                 booking.get_creator_name(),
                 booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -283,29 +297,28 @@ def export_booking_reports(request):
                 cell.border = thin_border
                 
                 # Apply alignment based on column
-                if col_num in [2, 3, 4, 9, 10]:  # Date, times, packs, advance - center
+                if col_num in [2, 3, 8, 9]:  # Date, time slot, pax, advance - center
                     cell.alignment = center_alignment
                 else:
                     cell.alignment = cell_alignment
                 
                 # Format advance amount
-                if col_num == 10:  # Advance Given column
+                if col_num == 9:  # Advance Given column
                     cell.number_format = '#,##0.00'
         
         # Auto-adjust column widths
         column_widths = {
             1: 20,  # Client Name
             2: 12,  # Booking Date
-            3: 10,  # Start Time
-            4: 10,  # End Time
-            5: 15,  # Phone Number
-            6: 25,  # Email
-            7: 15,  # Event Type
-            8: 20,  # Menu Type
-            9: 12,  # No. of Packs
-            10: 12, # Advance Given
-            11: 18, # Created By
-            12: 18  # Created At
+            3: 15,  # Time Slot
+            4: 15,  # Phone Number
+            5: 25,  # Email
+            6: 15,  # Event Type
+            7: 20,  # Menu Type
+            8: 12,  # No. of Pax
+            9: 12,  # Advance Given
+            10: 18, # Created By
+            11: 18  # Created At
         }
         
         for col_num, width in column_widths.items():
@@ -361,6 +374,7 @@ def export_booking_reports_csv(request):
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
         event_type = request.GET.get('event_type', None)
+        time_slot = request.GET.get('time_slot', None)
         created_by_filter = request.GET.get('created_by', None)
         search = request.GET.get('search', None)
         
@@ -373,6 +387,8 @@ def export_booking_reports_csv(request):
             bookings = bookings.filter(booking_date__lte=date_to)
         if event_type:
             bookings = bookings.filter(event_type=event_type)
+        if time_slot:
+            bookings = bookings.filter(time_slot=time_slot)
         if created_by_filter:
             if created_by_filter.startswith('user_'):
                 user_id = created_by_filter.replace('user_', '')
@@ -389,28 +405,28 @@ def export_booking_reports_csv(request):
                 Q(menu_type__icontains=search)
             )
         
-        bookings = bookings.order_by('-booking_date', '-start_time')
+        bookings = bookings.order_by('-booking_date', 'time_slot')
         
         # Create CSV response
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="booking_report_{date.today()}.csv"'
         
         writer = csv.writer(response)
-        writer.writerow(['Client Name', 'Booking Date', 'Start Time', 'End Time', 
+        writer.writerow(['Client Name', 'Booking Date', 'Time Slot', 
                         'Phone Number', 'Email', 'Event Type', 'Menu Type', 
-                        'No. of Packs', 'Advance Given', 'Created By', 'Created At'])
+                        'No. of Pax', 'Advance Given', 'Created By', 'Created At'])
         
         for booking in bookings:
+            time_slot_display = dict(Booking.TIME_SLOT_CHOICES).get(booking.time_slot, booking.time_slot)
             writer.writerow([
                 booking.client_name,
                 booking.booking_date.strftime('%Y-%m-%d'),
-                booking.start_time.strftime('%H:%M'),
-                booking.end_time.strftime('%H:%M'),
+                time_slot_display,
                 booking.phone_number,
                 booking.email or '',
                 booking.event_type,
                 booking.menu_type or '',
-                booking.no_of_packs or '',
+                booking.no_of_pax or '',
                 float(booking.advance_given),
                 booking.get_creator_name(),
                 booking.created_at.strftime('%Y-%m-%d %H:%M:%S')
