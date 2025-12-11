@@ -45,6 +45,7 @@ class Booking(models.Model):
     menu_type = models.CharField(max_length=50, choices=MENU_TYPE_CHOICES, blank=True, null=True, help_text="Type of menu/food arrangement")
     no_of_pax = models.CharField(max_length=100, blank=True, null=True, help_text="Number of pax/guests")
     additional_pax = models.CharField(max_length=100, blank=True, null=True, help_text="Additional number of pax")
+    rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Rate per pax/plate")
     advance_given = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     # Track who created this booking
@@ -95,7 +96,6 @@ class Booking(models.Model):
     def is_full_day_booking(self):
         """Check if this is a full day booking"""
         return self.time_slot == 'fullday'
-        
 
 
 

@@ -198,6 +198,7 @@ def get_bookings(request):
                 'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
                 'no_of_pax': booking.no_of_pax or '',
                 'additional_pax': booking.additional_pax or '',
+                'rate': str(booking.rate) if booking.rate else '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'is_full_day': booking.is_full_day_booking(),
@@ -238,6 +239,7 @@ def get_booking_detail(request, booking_id):
             'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
             'no_of_pax': booking.no_of_pax or '',
             'additional_pax': booking.additional_pax or '',
+            'rate': str(booking.rate) if booking.rate else '',
             'advance_given': str(booking.advance_given),
             'color': booking.get_time_color(),
             'is_full_day': booking.is_full_day_booking(),
@@ -273,6 +275,16 @@ def create_booking(request):
                 return JsonResponse({'error': 'Advance given cannot be negative'}, status=400)
         except (ValueError, TypeError):
             return JsonResponse({'error': 'Invalid advance given amount'}, status=400)
+        
+        # Validate rate if provided
+        rate = None
+        if data.get('rate') and data['rate'] != '':
+            try:
+                rate = float(data['rate'])
+                if rate < 0:
+                    return JsonResponse({'error': 'Rate cannot be negative'}, status=400)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid rate amount'}, status=400)
         
         booking_date = datetime.strptime(data['booking_date'], '%Y-%m-%d').date()
         time_slot = data['time_slot']
@@ -323,6 +335,7 @@ def create_booking(request):
             menu_type=data.get('menu_type', ''),
             no_of_pax=data.get('no_of_pax', ''),
             additional_pax=data.get('additional_pax', ''),
+            rate=rate,
             advance_given=advance_given,
             created_by_user=created_by_user,
             created_by_custom=created_by_custom
@@ -358,6 +371,7 @@ def create_booking(request):
                 'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
                 'no_of_pax': booking.no_of_pax or '',
                 'additional_pax': booking.additional_pax or '',
+                'rate': str(booking.rate) if booking.rate else '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'is_full_day': booking.is_full_day_booking(),
@@ -430,6 +444,20 @@ def update_booking(request, booking_id):
             booking.no_of_pax = data['no_of_pax']
         if 'additional_pax' in data:
             booking.additional_pax = data['additional_pax']
+        
+        # Handle rate field
+        if 'rate' in data:
+            if data['rate'] and data['rate'] != '':
+                try:
+                    rate = float(data['rate'])
+                    if rate < 0:
+                        return JsonResponse({'error': 'Rate cannot be negative'}, status=400)
+                    booking.rate = rate
+                except (ValueError, TypeError):
+                    return JsonResponse({'error': 'Invalid rate amount'}, status=400)
+            else:
+                booking.rate = None
+        
         if 'advance_given' in data:
             try:
                 advance_given = float(data['advance_given'])
@@ -484,6 +512,7 @@ def update_booking(request, booking_id):
                 'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
                 'no_of_pax': booking.no_of_pax or '',
                 'additional_pax': booking.additional_pax or '',
+                'rate': str(booking.rate) if booking.rate else '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'is_full_day': booking.is_full_day_booking(),
@@ -568,6 +597,7 @@ def get_bookings_by_date(request, date_str):
                 'menu_type_display': booking.get_menu_type_display() if booking.menu_type else '',
                 'no_of_pax': booking.no_of_pax or '',
                 'additional_pax': booking.additional_pax or '',
+                'rate': str(booking.rate) if booking.rate else '',
                 'advance_given': str(booking.advance_given),
                 'color': booking.get_time_color(),
                 'is_full_day': booking.is_full_day_booking(),

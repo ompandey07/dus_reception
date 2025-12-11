@@ -434,6 +434,15 @@ function renderBookingsList() {
                 Pax: ${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}
             </div>
             ` : ''}
+            ${booking.rate ? `
+            <div class="booking-detail">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" x2="12" y1="2" y2="22"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Rate: Rs. ${booking.rate}
+            </div>
+            ` : ''}
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
@@ -575,6 +584,12 @@ function openDetailModal(booking) {
                     <p class="detail-value">${escapeHtml(booking.additional_pax)}</p>
                 </div>
                 ` : ''}
+                ${booking.rate ? `
+                <div class="detail-item">
+                    <p class="detail-label">Rate</p>
+                    <p class="detail-value font-bold">Rs. ${booking.rate}</p>
+                </div>
+                ` : ''}
                 <div class="detail-item">
                     <p class="detail-label">Advance Given</p>
                     <p class="detail-value font-bold">Rs. ${booking.advance_given}</p>
@@ -685,6 +700,12 @@ function openDateBookingsModal(dateStr, bookings) {
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}</p>
                 </div>
                 ` : ''}
+                ${booking.rate ? `
+                <div>
+                    <p class="text-gray-600">Rate:</p>
+                    <p class="font-semibold text-gray-800">Rs. ${booking.rate}</p>
+                </div>
+                ` : ''}
                 <div>
                     <p class="text-gray-600">Advance Given:</p>
                     <p class="font-semibold text-gray-800">Rs. ${booking.advance_given}</p>
@@ -764,7 +785,7 @@ function openAddModal(dateStr = null) {
     document.getElementById('bookingDate').value = dateStr || today;
     document.getElementById('timeSlot').value = 'morning';
     
-    // Reset fields
+    // Reset all fields
     document.getElementById('clientName').value = '';
     document.getElementById('phoneNumber').value = '';
     document.getElementById('email').value = '';
@@ -772,6 +793,7 @@ function openAddModal(dateStr = null) {
     document.getElementById('menuType').value = '';
     document.getElementById('noOfPax').value = '';
     document.getElementById('additionalPax').value = '';
+    document.getElementById('rate').value = '';
     document.getElementById('advanceGiven').value = '';
     
     modal.classList.remove('hidden', 'closing');
@@ -847,6 +869,7 @@ async function editBooking(bookingId) {
         document.getElementById('editMenuType').value = booking.menu_type || '';
         document.getElementById('editNoOfPax').value = booking.no_of_pax || '';
         document.getElementById('editAdditionalPax').value = booking.additional_pax || '';
+        document.getElementById('editRate').value = booking.rate || '';
         document.getElementById('editAdvanceGiven').value = booking.advance_given;
         
         const modal = document.getElementById('editBookingModal');
@@ -904,6 +927,7 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
     const menuType = document.getElementById('menuType').value;
     const noOfPax = document.getElementById('noOfPax').value.trim();
     const additionalPax = document.getElementById('additionalPax').value.trim();
+    const rate = document.getElementById('rate').value.trim();
     const advanceGiven = document.getElementById('advanceGiven').value;
     
     if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
@@ -922,6 +946,20 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
         showToast('Advance amount cannot be negative', 'error');
         document.getElementById('advanceGiven').focus();
         return;
+    }
+    
+    // Validate rate if provided
+    if (rate && rate !== '') {
+        if (isNaN(parseFloat(rate))) {
+            showToast('Please enter a valid rate amount', 'error');
+            document.getElementById('rate').focus();
+            return;
+        }
+        if (parseFloat(rate) < 0) {
+            showToast('Rate cannot be negative', 'error');
+            document.getElementById('rate').focus();
+            return;
+        }
     }
     
     const button = event.target.querySelector('button[type="submit"]');
@@ -951,6 +989,7 @@ document.getElementById('addBookingForm').addEventListener('submit', async funct
                 menu_type: menuType,
                 no_of_pax: noOfPax,
                 additional_pax: additionalPax,
+                rate: rate,
                 advance_given: advanceGiven
             })
         });
@@ -992,6 +1031,7 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
     const menuType = document.getElementById('editMenuType').value;
     const noOfPax = document.getElementById('editNoOfPax').value.trim();
     const additionalPax = document.getElementById('editAdditionalPax').value.trim();
+    const rate = document.getElementById('editRate').value.trim();
     const advanceGiven = document.getElementById('editAdvanceGiven').value;
     
     if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
@@ -1010,6 +1050,20 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
         showToast('Advance amount cannot be negative', 'error');
         document.getElementById('editAdvanceGiven').focus();
         return;
+    }
+    
+    // Validate rate if provided
+    if (rate && rate !== '') {
+        if (isNaN(parseFloat(rate))) {
+            showToast('Please enter a valid rate amount', 'error');
+            document.getElementById('editRate').focus();
+            return;
+        }
+        if (parseFloat(rate) < 0) {
+            showToast('Rate cannot be negative', 'error');
+            document.getElementById('editRate').focus();
+            return;
+        }
     }
     
     const button = event.target.querySelector('button[type="submit"]');
@@ -1039,6 +1093,7 @@ document.getElementById('editBookingForm').addEventListener('submit', async func
                 menu_type: menuType,
                 no_of_pax: noOfPax,
                 additional_pax: additionalPax,
+                rate: rate,
                 advance_given: advanceGiven
             })
         });
