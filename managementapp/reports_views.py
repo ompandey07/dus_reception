@@ -193,10 +193,11 @@ def export_booking_reports(request):
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from openpyxl.utils import get_column_letter
     except ImportError:
-        # Fallback to CSV if openpyxl is not installed
         return export_booking_reports_csv(request)
     
     try:
+        from .views import get_nepali_date, log_activity
+        
         # Get same filters as report view
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
@@ -254,9 +255,9 @@ def export_booking_reports(request):
             bottom=Side(style='thin', color='000000')
         )
         
-        # Define headers
+        # Define headers (added Miti column)
         headers = [
-            'Client Name', 'Booking Date', 'Time Slot', 
+            'Client Name', 'Booking Date (AD)', 'Miti (BS)', 'Time Slot', 
             'Phone Number', 'Email', 'Event Type', 'Menu Type', 
             'No. of Pax', 'Advance Given', 'Created By', 'Created At'
         ]
@@ -277,9 +278,14 @@ def export_booking_reports(request):
         for row_num, booking in enumerate(bookings, 2):
             time_slot_display = dict(Booking.TIME_SLOT_CHOICES).get(booking.time_slot, booking.time_slot)
             
+            # Get Nepali date
+            nepali_date = get_nepali_date(booking.booking_date)
+            nepali_date_str = nepali_date['formatted_nepali'] if nepali_date else ''
+            
             data = [
                 booking.client_name,
                 booking.booking_date.strftime('%Y-%m-%d'),
+                nepali_date_str,
                 time_slot_display,
                 booking.phone_number,
                 booking.email or '',
@@ -297,28 +303,29 @@ def export_booking_reports(request):
                 cell.border = thin_border
                 
                 # Apply alignment based on column
-                if col_num in [2, 3, 8, 9]:  # Date, time slot, pax, advance - center
+                if col_num in [2, 3, 4, 9, 10]:  # Date, Miti, time slot, pax, advance - center
                     cell.alignment = center_alignment
                 else:
                     cell.alignment = cell_alignment
                 
                 # Format advance amount
-                if col_num == 9:  # Advance Given column
+                if col_num == 10:  # Advance Given column
                     cell.number_format = '#,##0.00'
         
         # Auto-adjust column widths
         column_widths = {
-            1: 20,  # Client Name
-            2: 12,  # Booking Date
-            3: 15,  # Time Slot
-            4: 15,  # Phone Number
-            5: 25,  # Email
-            6: 15,  # Event Type
-            7: 20,  # Menu Type
-            8: 12,  # No. of Pax
-            9: 12,  # Advance Given
-            10: 18, # Created By
-            11: 18  # Created At
+            1: 20,   # Client Name
+            2: 14,   # Booking Date (AD)
+            3: 18,   # Miti (BS)
+            4: 15,   # Time Slot
+            5: 15,   # Phone Number
+            6: 25,   # Email
+            7: 15,   # Event Type
+            8: 20,   # Menu Type
+            9: 12,   # No. of Pax
+            10: 12,  # Advance Given
+            11: 18,  # Created By
+            12: 18   # Created At
         }
         
         for col_num, width in column_widths.items():
@@ -336,7 +343,6 @@ def export_booking_reports(request):
         wb.save(response)
         
         # Log export activity
-        from .views import log_activity
         performed_by_user = None
         performed_by_custom = None
         
@@ -370,6 +376,8 @@ def export_booking_reports_csv(request):
     import csv
     
     try:
+        from .views import get_nepali_date
+        
         # Get same filters as report view
         date_from = request.GET.get('date_from', None)
         date_to = request.GET.get('date_to', None)
@@ -412,15 +420,21 @@ def export_booking_reports_csv(request):
         response['Content-Disposition'] = f'attachment; filename="booking_report_{date.today()}.csv"'
         
         writer = csv.writer(response)
-        writer.writerow(['Client Name', 'Booking Date', 'Time Slot', 
+        writer.writerow(['Client Name', 'Booking Date (AD)', 'Miti (BS)', 'Time Slot', 
                         'Phone Number', 'Email', 'Event Type', 'Menu Type', 
                         'No. of Pax', 'Advance Given', 'Created By', 'Created At'])
         
         for booking in bookings:
             time_slot_display = dict(Booking.TIME_SLOT_CHOICES).get(booking.time_slot, booking.time_slot)
+            
+            # Get Nepali date
+            nepali_date = get_nepali_date(booking.booking_date)
+            nepali_date_str = nepali_date['formatted_nepali'] if nepali_date else ''
+            
             writer.writerow([
                 booking.client_name,
                 booking.booking_date.strftime('%Y-%m-%d'),
+                nepali_date_str,
                 time_slot_display,
                 booking.phone_number,
                 booking.email or '',
