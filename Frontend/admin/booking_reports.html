@@ -1,13 +1,23 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Reports</title>
+    <link rel="manifest" href="{% static 'manifest.json' %}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="shortcut icon" href="{% static 'Logo/Logo.png' %}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+    
+    <!-- Nepali Date Picker CSS -->
+    <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+    
     <style>
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -15,16 +25,61 @@
         }
         .fade-in { animation: fadeIn 0.5s ease-out; }
         .card-hover { transition: all 0.3s ease; }
-        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
         .gradient-blue { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
         .gradient-purple { background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); }
         .gradient-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
         .gradient-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
         * { border-radius: 0 !important; }
+        
+        /* Flatpickr custom styles to remove border radius */
+        .flatpickr-calendar {
+            border-radius: 0 !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+        }
+        .flatpickr-months, .flatpickr-month, .flatpickr-current-month,
+        .flatpickr-prev-month, .flatpickr-next-month,
+        .flatpickr-day, .flatpickr-day.selected {
+            border-radius: 0 !important;
+        }
+        .flatpickr-input {
+            background-color: white !important;
+            cursor: pointer;
+        }
+        
+        /* Date picker pair styling */
+        .date-pair-container {
+            display: flex;
+            gap: 0;
+            border: 2px solid #d1d5db;
+            overflow: hidden;
+        }
+        .date-pair-container:focus-within {
+            border-color: #3b82f6;
+        }
+        .date-pair-container input {
+            border: none !important;
+            flex: 1;
+        }
+        .date-pair-container input:first-child {
+            border-right: 1px solid #e5e7eb !important;
+        }
+        .date-pair-container input:focus {
+            outline: none;
+            background-color: #f0f9ff;
+        }
+        
+        /* Nepali datepicker custom styles */
+        .nepali-dp-container {
+            border-radius: 0 !important;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-    
+
     <!-- Top Navigation -->
     <nav class="bg-white shadow-lg h-16 fixed top-0 left-0 right-0 z-50 border-b-4 border-blue-600">
         <div class="flex items-center justify-between h-full px-4 sm:px-6">
@@ -48,7 +103,7 @@
         <button id="closeMenu" class="lg:hidden absolute top-4 right-4 text-gray-700 hover:text-gray-900 focus:outline-none">
             <i class="ri-close-line text-2xl"></i>
         </button>
-        
+
         <nav class="px-4 space-y-1 mt-8 lg:mt-0">
             <a href="{% url 'admin_dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition border-l-4 border-transparent hover:border-blue-600 group">
                 <i class="ri-dashboard-line text-lg text-blue-600 group-hover:text-blue-700"></i>
@@ -82,7 +137,7 @@
 
     <!-- Main Content -->
     <main class="lg:ml-64 mt-16 p-4 sm:p-6">
-        
+
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
             <!-- Total Bookings -->
@@ -156,16 +211,40 @@
             </div>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Date From -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date From</label>
-                    <input type="date" id="dateFrom" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                <!-- Date From (AD & BS Combined) -->
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="ri-calendar-line text-blue-600 mr-1"></i>
+                        Date From
+                        <span class="text-xs text-gray-500 ml-2">(AD / BS)</span>
+                    </label>
+                    <div class="date-pair-container">
+                        <input type="text" id="dateFrom" 
+                               class="px-3 py-2 focus:outline-none"
+                               placeholder="English Date (AD)">
+                        <input type="text" id="dateFromNepali" 
+                               class="px-3 py-2 focus:outline-none bg-green-50"
+                               placeholder="Nepali Date (BS)" 
+                               autocomplete="off">
+                    </div>
                 </div>
 
-                <!-- Date To -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date To</label>
-                    <input type="date" id="dateTo" class="w-full px-3 py-2 border-2 border-gray-300 focus:border-blue-600 focus:outline-none">
+                <!-- Date To (AD & BS Combined) -->
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="ri-calendar-line text-blue-600 mr-1"></i>
+                        Date To
+                        <span class="text-xs text-gray-500 ml-2">(AD / BS)</span>
+                    </label>
+                    <div class="date-pair-container">
+                        <input type="text" id="dateTo" 
+                               class="px-3 py-2 focus:outline-none"
+                               placeholder="English Date (AD)">
+                        <input type="text" id="dateToNepali" 
+                               class="px-3 py-2 focus:outline-none bg-green-50"
+                               placeholder="Nepali Date (BS)" 
+                               autocomplete="off">
+                    </div>
                 </div>
 
                 <!-- Event Type Filter -->
@@ -299,11 +378,165 @@
         </div>
     </main>
 
+    <!-- Scripts -->
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
+    <!-- Nepali Date Picker JS -->
+    <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+    
+    <!-- Nepali Date Converter -->
+    <script src="https://cdn.jsdelivr.net/npm/@sbmdkl/nepali-date-converter@2.0.3/dist/@sbmdkl/nepali-date-converter.umd.min.js"></script>
+
     <script>
         let currentPage = 1;
         const perPage = 20;
+        
+        // Flatpickr instances (global for access in functions)
+        let dateFromPicker = null;
+        let dateToPicker = null;
 
-        // Menu Toggle
+        // ============================================
+        // DATE CONVERSION FUNCTIONS
+        // ============================================
+        
+        /**
+         * Convert English Date (AD) to Nepali Date (BS)
+         * @param {string} adDate - Date in YYYY-MM-DD format
+         * @returns {string} - Nepali date in YYYY-MM-DD format
+         */
+        function convertADToBS(adDate) {
+            if (!adDate) return '';
+            try {
+                const { adToBs } = window['@sbmdkl/nepali-date-converter'];
+                return adToBs(adDate);
+            } catch (e) {
+                console.error('Error converting AD to BS:', e);
+                return '';
+            }
+        }
+        
+        /**
+         * Convert Nepali Date (BS) to English Date (AD)
+         * @param {string} bsDate - Date in YYYY-MM-DD format
+         * @returns {string} - English date in YYYY-MM-DD format
+         */
+        function convertBSToAD(bsDate) {
+            if (!bsDate) return '';
+            try {
+                const { bsToAd } = window['@sbmdkl/nepali-date-converter'];
+                return bsToAd(bsDate);
+            } catch (e) {
+                console.error('Error converting BS to AD:', e);
+                return '';
+            }
+        }
+        
+        /**
+         * Get today's date formatted as YYYY-MM-DD
+         * @returns {string}
+         */
+        function getTodayFormatted() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // ============================================
+        // DATE PICKERS INITIALIZATION
+        // ============================================
+        
+        function initializeDatePickers() {
+            const todayFormatted = getTodayFormatted();
+            const todayNepali = convertADToBS(todayFormatted);
+            
+            // ---- Initialize Flatpickr for Date From (English) ----
+            dateFromPicker = flatpickr("#dateFrom", {
+                dateFormat: "Y-m-d",
+                defaultDate: todayFormatted,
+                allowInput: true,
+                onChange: function(selectedDates, dateStr) {
+                    // When English date changes, update Nepali date
+                    if (dateStr) {
+                        const nepaliDate = convertADToBS(dateStr);
+                        document.getElementById('dateFromNepali').value = nepaliDate;
+                    } else {
+                        document.getElementById('dateFromNepali').value = '';
+                    }
+                }
+            });
+            
+            // ---- Initialize Flatpickr for Date To (English) ----
+            dateToPicker = flatpickr("#dateTo", {
+                dateFormat: "Y-m-d",
+                defaultDate: todayFormatted,
+                allowInput: true,
+                onChange: function(selectedDates, dateStr) {
+                    // When English date changes, update Nepali date
+                    if (dateStr) {
+                        const nepaliDate = convertADToBS(dateStr);
+                        document.getElementById('dateToNepali').value = nepaliDate;
+                    } else {
+                        document.getElementById('dateToNepali').value = '';
+                    }
+                }
+            });
+            
+            // ---- Initialize Nepali Date Picker for Date From ----
+            const dateFromNepaliInput = document.getElementById('dateFromNepali');
+            if (dateFromNepaliInput && typeof dateFromNepaliInput.NepaliDatePicker === 'function') {
+                dateFromNepaliInput.NepaliDatePicker({
+                    dateFormat: "YYYY-MM-DD",
+                    closeOnDateSelect: true,
+                    onChange: function() {
+                        // When Nepali date changes, update English date
+                        setTimeout(function() {
+                            const bsDate = dateFromNepaliInput.value;
+                            if (bsDate) {
+                                const adDate = convertBSToAD(bsDate);
+                                if (adDate && dateFromPicker) {
+                                    dateFromPicker.setDate(adDate, false); // false = don't trigger onChange
+                                }
+                            }
+                        }, 50);
+                    }
+                });
+            }
+            
+            // ---- Initialize Nepali Date Picker for Date To ----
+            const dateToNepaliInput = document.getElementById('dateToNepali');
+            if (dateToNepaliInput && typeof dateToNepaliInput.NepaliDatePicker === 'function') {
+                dateToNepaliInput.NepaliDatePicker({
+                    dateFormat: "YYYY-MM-DD",
+                    closeOnDateSelect: true,
+                    onChange: function() {
+                        // When Nepali date changes, update English date
+                        setTimeout(function() {
+                            const bsDate = dateToNepaliInput.value;
+                            if (bsDate) {
+                                const adDate = convertBSToAD(bsDate);
+                                if (adDate && dateToPicker) {
+                                    dateToPicker.setDate(adDate, false); // false = don't trigger onChange
+                                }
+                            }
+                        }, 50);
+                    }
+                });
+            }
+            
+            // ---- Set initial Nepali dates ----
+            document.getElementById('dateFromNepali').value = todayNepali;
+            document.getElementById('dateToNepali').value = todayNepali;
+            
+            console.log('Date pickers initialized with today:', todayFormatted, '(BS:', todayNepali + ')');
+        }
+
+        // ============================================
+        // MENU TOGGLE
+        // ============================================
+        
         const menuToggle = document.getElementById('menuToggle');
         const closeMenu = document.getElementById('closeMenu');
         const sidebar = document.getElementById('sidebar');
@@ -325,7 +558,10 @@
         closeMenu.addEventListener('click', closeSidebar);
         overlay.addEventListener('click', closeSidebar);
 
-        // Get badge color based on time slot
+        // ============================================
+        // HELPER FUNCTIONS
+        // ============================================
+        
         function getTimeSlotBadge(timeSlot, displayText) {
             const colors = {
                 'morning': 'bg-green-100 text-green-700',
@@ -336,7 +572,10 @@
             return `<span class="${colorClass} px-2 py-1 text-xs font-semibold">${displayText}</span>`;
         }
 
-        // Load Bookings Report
+        // ============================================
+        // LOAD BOOKINGS
+        // ============================================
+        
         async function loadBookings(page = 1) {
             const loadingState = document.getElementById('loadingState');
             const bookingsContainer = document.getElementById('bookingsContainer');
@@ -358,6 +597,7 @@
                     per_page: perPage
                 });
 
+                // Get filter values (use English dates for API)
                 const dateFrom = document.getElementById('dateFrom').value;
                 const dateTo = document.getElementById('dateTo').value;
                 const eventType = document.getElementById('eventTypeFilter').value;
@@ -400,7 +640,7 @@
                 // Display bookings
                 const tbody = document.getElementById('bookingsTableBody');
                 tbody.innerHTML = '';
-                
+
                 data.bookings.forEach(booking => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-blue-50 transition duration-200';
@@ -457,13 +697,13 @@
                     document.getElementById('currentPage').textContent = data.pagination.current_page;
                     document.getElementById('totalPages').textContent = data.pagination.total_pages;
                     document.getElementById('totalRecords').textContent = data.pagination.total_count;
-                    
+
                     const prevBtn = document.getElementById('prevPage');
                     const nextBtn = document.getElementById('nextPage');
-                    
+
                     prevBtn.disabled = !data.pagination.has_previous;
                     nextBtn.disabled = !data.pagination.has_next;
-                    
+
                     paginationContainer.classList.remove('hidden');
                 } else {
                     document.getElementById('totalRecords').textContent = data.pagination.total_count;
@@ -481,10 +721,10 @@
         function updateStats(stats) {
             document.getElementById('totalBookings').textContent = stats.total_bookings;
             document.getElementById('totalAdvance').textContent = `NPR ${stats.total_advance.toLocaleString()}`;
-            
+
             const avgAdvance = stats.total_bookings > 0 ? stats.total_advance / stats.total_bookings : 0;
             document.getElementById('avgAdvance').textContent = `NPR ${avgAdvance.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
-            
+
             document.getElementById('eventTypes').textContent = stats.event_breakdown.length;
         }
 
@@ -506,7 +746,10 @@
             });
         }
 
-        // Export Excel/CSV
+        // ============================================
+        // EXPORT CSV
+        // ============================================
+        
         document.getElementById('exportCSV').addEventListener('click', async () => {
             const params = new URLSearchParams();
 
@@ -527,21 +770,36 @@
             window.location.href = `/api/reports/export/?${params.toString()}`;
         });
 
-        // Event Listeners
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        
         document.getElementById('applyFilters').addEventListener('click', () => {
             currentPage = 1;
             loadBookings(currentPage);
         });
 
         document.getElementById('clearFilters').addEventListener('click', () => {
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
+            // Clear all filters
+            const todayFormatted = getTodayFormatted();
+            const todayNepali = convertADToBS(todayFormatted);
+            
+            // Reset Flatpickr dates
+            if (dateFromPicker) dateFromPicker.setDate(todayFormatted);
+            if (dateToPicker) dateToPicker.setDate(todayFormatted);
+            
+            // Reset Nepali dates
+            document.getElementById('dateFromNepali').value = todayNepali;
+            document.getElementById('dateToNepali').value = todayNepali;
+            
+            // Reset other filters
             document.getElementById('eventTypeFilter').value = '';
             document.getElementById('timeSlotFilter').value = '';
             document.getElementById('createdByFilter').value = '';
             document.getElementById('minAdvance').value = '';
             document.getElementById('maxAdvance').value = '';
             document.getElementById('searchInput').value = '';
+
             currentPage = 1;
             loadBookings(currentPage);
         });
@@ -564,9 +822,17 @@
             }
         });
 
-        // Initial Load
-        loadBookings(currentPage);
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        window.onload = function() {
+            // Initialize date pickers with today's date
+            initializeDatePickers();
+            
+            // Load initial bookings
+            loadBookings(currentPage);
+        };
     </script>
-
 </body>
 </html>
