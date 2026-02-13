@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-      <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="shortcut icon" href="{% static 'Logo/Logo.png' %}" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
@@ -14,13 +15,61 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .fade-in { animation: fadeIn 0.5s ease-out; }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
         .card-hover { transition: all 0.3s ease; }
         .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
         .gradient-blue { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
         .gradient-purple { background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); }
         .gradient-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
         * { border-radius: 0 !important; }
+        
+        /* Modal Animation */
+        .modal-backdrop {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.show {
+            opacity: 1;
+        }
+        .modal-content {
+            opacity: 0;
+            transform: scale(0.9) translateY(-20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .modal-backdrop.show .modal-content {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border-left: 4px solid;
+        }
+        .toast.show { transform: translateX(0); opacity: 1; }
+        .toast.success { border-left-color: #10b981; }
+        .toast.error { border-left-color: #ef4444; }
+        .toast-icon { font-size: 24px; }
+        .toast.success .toast-icon { color: #10b981; }
+        .toast.error .toast-icon { color: #ef4444; }
+
+        /* Spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin { animation: spin 1s linear infinite; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -35,10 +84,116 @@
                 <img src="{% static 'Logo/Logo.png' %}" alt="Logo" class="h-8 sm:h-10">
             </div>
             <div class="flex items-center space-x-4">
-                <span class="text-gray-800 text-sm sm:text-base font-semibold truncate max-w-[150px] sm:max-w-none">{{ username }}</span>
+                <button id="userProfileBtn" class="flex items-center space-x-2 px-3 py-2 text-gray-800 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 focus:outline-none group cursor-pointer">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
+                        <i class="ri-user-3-fill text-white text-sm"></i>
+                    </div>
+                    <span class="text-sm sm:text-base font-semibold truncate max-w-[150px] sm:max-w-none">{{ username }}</span>
+                    <i class="ri-settings-3-line text-lg group-hover:rotate-90 transition-transform duration-300"></i>
+                </button>
             </div>
         </div>
     </nav>
+
+    <!-- Password Change Modal -->
+    <div id="passwordModal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 z-[100] hidden items-center justify-center p-4">
+        <div class="modal-content bg-white w-full max-w-md shadow-2xl border-t-4 border-blue-600">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-4 flex items-center justify-between">
+                <h3 class="text-white text-lg font-bold flex items-center">
+                    <i class="ri-lock-password-line mr-2 text-xl"></i>
+                    Change Password
+                </h3>
+                <button id="closeModal" class="text-white hover:text-gray-200 focus:outline-none hover:rotate-90 transition-transform duration-300">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            
+            <form id="passwordChangeForm" class="p-6">
+                {% csrf_token %}
+                
+                <div id="errorContainer" class="hidden mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm">
+                    <div class="flex items-center">
+                        <i class="ri-error-warning-line mr-2 text-lg"></i>
+                        <span id="errorMessage"></span>
+                    </div>
+                </div>
+                
+                <!-- Current Password -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="current_password">
+                        <i class="ri-lock-line text-gray-500 mr-1"></i>
+                        Current Password
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="current_password" name="current_password" 
+                               class="w-full px-4 py-3 border-2 border-gray-200 focus:outline-none focus:border-blue-500 transition-colors"
+                               placeholder="Enter current password">
+                        <button type="button" class="toggle-password absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none" data-target="current_password">
+                            <i class="ri-eye-line text-xl"></i>
+                        </button>
+                    </div>
+                    <span class="text-red-500 text-xs mt-1 block hidden" id="current_password_error"></span>
+                </div>
+                
+                <!-- New Password -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="new_password">
+                        <i class="ri-lock-2-line text-gray-500 mr-1"></i>
+                        New Password
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="new_password" name="new_password" 
+                               class="w-full px-4 py-3 border-2 border-gray-200 focus:outline-none focus:border-blue-500 transition-colors"
+                               placeholder="Enter new password">
+                        <button type="button" class="toggle-password absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none" data-target="new_password">
+                            <i class="ri-eye-line text-xl"></i>
+                        </button>
+                    </div>
+                    <span class="text-red-500 text-xs mt-1 block hidden" id="new_password_error"></span>
+                </div>
+                
+                <!-- Confirm Password -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="confirm_password">
+                        <i class="ri-lock-password-line text-gray-500 mr-1"></i>
+                        Confirm New Password
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="confirm_password" name="confirm_password" 
+                               class="w-full px-4 py-3 border-2 border-gray-200 focus:outline-none focus:border-blue-500 transition-colors"
+                               placeholder="Confirm new password">
+                        <button type="button" class="toggle-password absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none" data-target="confirm_password">
+                            <i class="ri-eye-line text-xl"></i>
+                        </button>
+                    </div>
+                    <span class="text-red-500 text-xs mt-1 block hidden" id="confirm_password_error"></span>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-4 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="ri-save-line mr-2" id="submitIcon"></i>
+                        <span id="submitBtnText">Update Password</span>
+                    </button>
+                    <button type="button" id="cancelBtn" class="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 hover:bg-gray-200 transition-colors border-2 border-gray-200">
+                        <i class="ri-close-line mr-1"></i>
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="toast-icon" id="toastIcon"></i>
+        <div>
+            <div class="font-semibold text-gray-800" id="toastTitle"></div>
+            <div class="text-sm text-gray-600" id="toastMessage"></div>
+        </div>
+        <button onclick="hideToast()" class="ml-4 text-gray-400 hover:text-gray-600 focus:outline-none">
+            <i class="ri-close-line text-xl"></i>
+        </button>
+    </div>
 
     <!-- Overlay for mobile -->
     <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
@@ -66,7 +221,7 @@
                 <i class="ri-file-list-line text-lg text-blue-600 group-hover:text-blue-700"></i>
                 <span class="text-sm font-medium">Booking Reports</span>
             </a>
-            <a href="{% url "activity_log_view" %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition border-l-4 border-transparent hover:border-green-600 group">
+            <a href="{% url 'activity_log_view' %}" class="flex items-center space-x-3 px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition border-l-4 border-transparent hover:border-green-600 group">
                 <i class="ri-line-chart-line text-lg text-green-600 group-hover:text-green-700"></i>
                 <span class="text-sm font-medium">Activity Log</span>
             </a>
@@ -82,6 +237,7 @@
 
     <!-- Main Content -->
     <main class="lg:ml-64 mt-16 p-4 sm:p-6">
+        
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
             <!-- Total Bookings Card -->
@@ -92,12 +248,12 @@
                         <p class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mt-2">{{ total_bookings }}</p>
                     </div>
                     <div class="gradient-blue p-4 shadow-lg">
-                        <i class="ri-calendar-check-line text-4xl text-white"></i>
+                        <i class="ri-calendar-check-line text-3xl text-white"></i>
                     </div>
                 </div>
                 <div class="mt-4 flex items-center">
                     <span class="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-1">
-                        <i class="ri-arrow-up-line"></i> Active
+                        <i class="ri-arrow-up-line"></i> All Time
                     </span>
                 </div>
             </div>
@@ -110,12 +266,12 @@
                         <p class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent mt-2">{{ total_users }}</p>
                     </div>
                     <div class="gradient-purple p-4 shadow-lg">
-                        <i class="ri-group-line text-4xl text-white"></i>
+                        <i class="ri-group-line text-3xl text-white"></i>
                     </div>
                 </div>
                 <div class="mt-4 flex items-center">
                     <span class="text-xs text-purple-600 font-semibold bg-purple-50 px-2 py-1">
-                        <i class="ri-user-add-line"></i> Growing
+                        <i class="ri-user-add-line"></i> Active
                     </span>
                 </div>
             </div>
@@ -125,10 +281,10 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Total Advance</p>
-                        <p class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent mt-2">NPR {{ total_advance|floatformat:2 }}</p>
+                        <p class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent mt-2">NPR {{ total_advance|floatformat:0 }}</p>
                     </div>
                     <div class="gradient-green p-4 shadow-lg">
-                        <i class="ri-money-dollar-circle-line text-4xl text-white"></i>
+                        <i class="ri-money-dollar-circle-line text-3xl text-white"></i>
                     </div>
                 </div>
                 <div class="mt-4 flex items-center">
@@ -139,13 +295,46 @@
             </div>
         </div>
 
+        <!-- Trend Chart -->
+        <div class="bg-white shadow-lg p-6 card-hover fade-in border-t-4 border-blue-600 mb-6" style="animation-delay: 0.3s;">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                        <i class="ri-line-chart-line text-blue-600 mr-2 text-2xl"></i>
+                        Activity Trends
+                    </h3>
+                    <p class="text-gray-500 text-sm mt-1">Bookings, Revenue & User registrations over last 30 days</p>
+                </div>
+                <div class="flex flex-wrap gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-blue-500"></span>
+                        <span class="text-gray-600">Bookings</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-green-500"></span>
+                        <span class="text-gray-600">Advance (NPR)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 bg-purple-500"></span>
+                        <span class="text-gray-600">New Users</span>
+                    </div>
+                </div>
+            </div>
+            <div class="relative" style="height: 350px;">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
         <!-- Recent Activity Table -->
-        <div class="bg-white shadow-lg p-6 mt-6 fade-in border-t-4 border-blue-600" style="animation-delay: 0.3s;">
+        <div class="bg-white shadow-lg p-6 fade-in border-t-4 border-blue-600" style="animation-delay: 0.4s;">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-xl font-bold text-gray-800 flex items-center">
                     <i class="ri-calendar-event-line text-blue-600 mr-2 text-2xl"></i>
                     Recent Bookings
                 </h3>
+                <a href="{% url 'booking_reports_view' %}" class="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center">
+                    View All <i class="ri-arrow-right-line ml-1"></i>
+                </a>
             </div>
             <div class="overflow-x-auto -mx-4 sm:mx-0">
                 <div class="inline-block min-w-full align-middle">
@@ -188,7 +377,7 @@
                             {% else %}
                                 <tr>
                                     <td colspan="5" class="px-4 py-8 text-center text-gray-400">
-                                        <i class="ri-inbox-line text-4xl mb-2"></i>
+                                        <i class="ri-inbox-line text-4xl mb-2 block"></i>
                                         <p>No recent bookings</p>
                                     </td>
                                 </tr>
@@ -201,7 +390,171 @@
     </main>
 
     <script>
-        // Hamburger Menu Toggle Logic
+        // Chart Data from Django
+        const chartData = {{ chart_data|safe }};
+
+        // ===== STACKED LINE CHART =====
+        Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
+        
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        // Create gradients
+        const blueGradient = ctx.createLinearGradient(0, 0, 0, 350);
+        blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+        blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+        
+        const greenGradient = ctx.createLinearGradient(0, 0, 0, 350);
+        greenGradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+        greenGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        
+        const purpleGradient = ctx.createLinearGradient(0, 0, 0, 350);
+        purpleGradient.addColorStop(0, 'rgba(168, 85, 247, 0.4)');
+        purpleGradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Bookings',
+                        data: chartData.bookings,
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: blueGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Advance (NPR)',
+                        data: chartData.advance,
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        backgroundColor: greenGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'New Users',
+                        data: chartData.users,
+                        borderColor: 'rgba(168, 85, 247, 1)',
+                        backgroundColor: purpleGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(168, 85, 247, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        padding: 12,
+                        borderColor: 'rgba(59, 130, 246, 0.5)',
+                        borderWidth: 1,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.dataset.label === 'Advance (NPR)') {
+                                    label += 'NPR ' + context.parsed.y.toLocaleString();
+                                } else {
+                                    label += context.parsed.y;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: { size: 10 }
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Count',
+                            color: '#6b7280',
+                            font: { size: 12, weight: '600' }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            stepSize: 1
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Advance (NPR)',
+                            color: '#6b7280',
+                            font: { size: 12, weight: '600' }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            callback: function(value) {
+                                return 'NPR ' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ===== SIDEBAR LOGIC =====
         const menuToggle = document.getElementById('menuToggle');
         const closeMenu = document.getElementById('closeMenu');
         const sidebar = document.getElementById('sidebar');
@@ -223,13 +576,160 @@
         closeMenu.addEventListener('click', closeSidebar);
         overlay.addEventListener('click', closeSidebar);
 
-        const menuLinks = sidebar.querySelectorAll('a, button[type="submit"]');
-        menuLinks.forEach(link => {
+        sidebar.querySelectorAll('a, button[type="submit"]').forEach(link => {
             link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) {
-                    closeSidebar();
+                if (window.innerWidth < 1024) closeSidebar();
+            });
+        });
+
+        // ===== PASSWORD MODAL LOGIC =====
+        const passwordModal = document.getElementById('passwordModal');
+        const userProfileBtn = document.getElementById('userProfileBtn');
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const passwordChangeForm = document.getElementById('passwordChangeForm');
+
+        function showPasswordModal() {
+            passwordModal.classList.remove('hidden');
+            passwordModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => passwordModal.classList.add('show'), 10);
+            clearErrors();
+        }
+
+        function closePasswordModal() {
+            passwordModal.classList.remove('show');
+            setTimeout(() => {
+                passwordModal.classList.add('hidden');
+                passwordModal.classList.remove('flex');
+                document.body.style.overflow = '';
+                passwordChangeForm.reset();
+                clearErrors();
+            }, 300);
+        }
+
+        function clearErrors() {
+            document.getElementById('errorContainer').classList.add('hidden');
+            document.getElementById('errorMessage').textContent = '';
+            ['current_password', 'new_password', 'confirm_password'].forEach(field => {
+                const errorEl = document.getElementById(field + '_error');
+                const inputEl = document.getElementById(field);
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+                inputEl.classList.remove('border-red-500');
+                inputEl.classList.add('border-gray-200');
+            });
+        }
+
+        function showFieldError(field, message) {
+            const errorEl = document.getElementById(field + '_error');
+            const inputEl = document.getElementById(field);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            inputEl.classList.remove('border-gray-200');
+            inputEl.classList.add('border-red-500');
+        }
+
+        userProfileBtn.addEventListener('click', showPasswordModal);
+        closeModal.addEventListener('click', closePasswordModal);
+        cancelBtn.addEventListener('click', closePasswordModal);
+        passwordModal.addEventListener('click', (e) => { if (e.target === passwordModal) closePasswordModal(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !passwordModal.classList.contains('hidden')) closePasswordModal(); });
+
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const field = document.getElementById(this.getAttribute('data-target'));
+                const icon = this.querySelector('i');
+                if (field.type === 'password') {
+                    field.type = 'text';
+                    icon.classList.replace('ri-eye-line', 'ri-eye-off-line');
+                } else {
+                    field.type = 'password';
+                    icon.classList.replace('ri-eye-off-line', 'ri-eye-line');
                 }
             });
+        });
+
+        // ===== TOAST =====
+        function showToast(type, title, message) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            toast.classList.remove('success', 'error');
+            toastIcon.classList.remove('ri-checkbox-circle-fill', 'ri-close-circle-fill');
+            toast.classList.add(type);
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+            toastIcon.classList.add(type === 'success' ? 'ri-checkbox-circle-fill' : 'ri-close-circle-fill');
+            toast.classList.add('show');
+            setTimeout(hideToast, 5000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
+
+        // ===== FORM SUBMISSION =====
+        passwordChangeForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            clearErrors();
+            
+            const currentPassword = document.getElementById('current_password').value.trim();
+            const newPassword = document.getElementById('new_password').value.trim();
+            const confirmPassword = document.getElementById('confirm_password').value.trim();
+            
+            let hasError = false;
+            
+            if (!currentPassword) { showFieldError('current_password', 'Current password is required'); hasError = true; }
+            if (!newPassword) { showFieldError('new_password', 'New password is required'); hasError = true; }
+            else if (newPassword.length < 8) { showFieldError('new_password', 'Password must be at least 8 characters'); hasError = true; }
+            if (!confirmPassword) { showFieldError('confirm_password', 'Please confirm your new password'); hasError = true; }
+            else if (newPassword && newPassword !== confirmPassword) { showFieldError('confirm_password', 'Passwords do not match'); hasError = true; }
+            
+            if (hasError) return;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const submitIcon = document.getElementById('submitIcon');
+            
+            submitBtn.disabled = true;
+            submitBtnText.textContent = 'Updating...';
+            submitIcon.classList.replace('ri-save-line', 'ri-loader-4-line');
+            submitIcon.classList.add('animate-spin');
+            
+            try {
+                const formData = new FormData(passwordChangeForm);
+                const response = await fetch("{% url 'admin_change_password' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': formData.get('csrfmiddlewaretoken') }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    closePasswordModal();
+                    showToast('success', 'Success!', data.message || 'Password updated successfully');
+                } else {
+                    if (data.errors) {
+                        if (data.errors.current_password) showFieldError('current_password', data.errors.current_password);
+                        if (data.errors.new_password) showFieldError('new_password', data.errors.new_password);
+                        if (data.errors.confirm_password) showFieldError('confirm_password', data.errors.confirm_password);
+                    }
+                    if (data.error) {
+                        document.getElementById('errorMessage').textContent = data.error;
+                        document.getElementById('errorContainer').classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'An error occurred. Please try again.';
+                document.getElementById('errorContainer').classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtnText.textContent = 'Update Password';
+                submitIcon.classList.remove('animate-spin');
+                submitIcon.classList.replace('ri-loader-4-line', 'ri-save-line');
+            }
         });
     </script>
 

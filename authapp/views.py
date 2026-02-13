@@ -8,6 +8,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from managementapp.models import Booking, ActivityLog
 from .models import CustomUser
+from django.contrib.auth import update_session_auth_hash
+from django.db.models.functions import TruncMonth, TruncDate
+from datetime import datetime, timedelta
 import json
 
 User = get_user_model()
@@ -229,17 +232,70 @@ def admin_dashboard(request):
     if not (user.is_superuser or user.is_staff):
         return redirect('login')
     
-    # Get statistics for admin (all bookings and users)
+    # Get statistics for admin
     total_bookings = Booking.objects.count()
     total_users = CustomUser.objects.count()
     total_advance = Booking.objects.aggregate(
         total=Sum('advance_given')
     )['total'] or 0
     
-    # Get recent bookings for activity log
+    # Get recent bookings
     recent_bookings = Booking.objects.select_related(
         'created_by_user', 'created_by_custom'
     ).order_by('-created_at')[:5]
+    
+    # ===== TREND CHART DATA (Last 30 days) =====
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    # Daily Bookings
+    daily_bookings = Booking.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).annotate(
+        day=TruncDate('created_at')
+    ).values('day').annotate(
+        count=Count('id'),
+        advance=Sum('advance_given')
+    ).order_by('day')
+    
+    # Daily User Registrations
+    daily_users = CustomUser.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).annotate(
+        day=TruncDate('created_at')
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('day')
+    
+    # Create a complete date range for last 30 days
+    date_labels = []
+    booking_counts = []
+    advance_amounts = []
+    user_counts = []
+    
+    # Convert querysets to dictionaries for easy lookup
+    bookings_dict = {item['day']: item for item in daily_bookings}
+    users_dict = {item['day']: item['count'] for item in daily_users}
+    
+    for i in range(30):
+        date = (datetime.now() - timedelta(days=29-i)).date()
+        date_labels.append(date.strftime('%d %b'))
+        
+        if date in bookings_dict:
+            booking_counts.append(bookings_dict[date]['count'])
+            advance_amounts.append(float(bookings_dict[date]['advance'] or 0))
+        else:
+            booking_counts.append(0)
+            advance_amounts.append(0)
+        
+        user_counts.append(users_dict.get(date, 0))
+    
+    # Prepare chart data
+    chart_data = {
+        'labels': date_labels,
+        'bookings': booking_counts,
+        'advance': advance_amounts,
+        'users': user_counts
+    }
     
     context = {
         "email": user.email,
@@ -250,9 +306,72 @@ def admin_dashboard(request):
         "total_users": total_users,
         "total_advance": total_advance,
         "recent_bookings": recent_bookings,
+        "chart_data": json.dumps(chart_data),
     }
     return render(request, "admin/dashboards.html", context)
 
+
+@login_required(login_url='/unauthorized/')
+def admin_change_password(request):
+    """Handle admin password change"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    user = request.user
+    
+    if not (user.is_superuser or user.is_staff):
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    # Get form data
+    current_password = request.POST.get('current_password', '').strip()
+    new_password = request.POST.get('new_password', '').strip()
+    confirm_password = request.POST.get('confirm_password', '').strip()
+    
+    errors = {}
+    
+    # Validation
+    if not current_password:
+        errors['current_password'] = 'Current password is required'
+    elif not user.check_password(current_password):
+        errors['current_password'] = 'Current password is incorrect'
+    
+    if not new_password:
+        errors['new_password'] = 'New password is required'
+    elif len(new_password) < 8:
+        errors['new_password'] = 'Password must be at least 8 characters long'
+    
+    if not confirm_password:
+        errors['confirm_password'] = 'Please confirm your new password'
+    elif new_password != confirm_password:
+        errors['confirm_password'] = 'Passwords do not match'
+    
+    # Check if new password is same as current
+    if not errors.get('current_password') and not errors.get('new_password'):
+        if current_password == new_password:
+            errors['new_password'] = 'New password cannot be the same as current password'
+    
+    if errors:
+        return JsonResponse({
+            'success': False,
+            'errors': errors,
+            'error': 'Please correct the errors below'
+        }, status=400)
+    
+    try:
+        user.set_password(new_password)
+        user.save()
+        update_session_auth_hash(request, user)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Password updated successfully!'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': 'An error occurred while updating password. Please try again.'
+        }, status=500)
 # ============================================================
 # CUSTOM USER DASHBOARD VIEW
 # ============================================================

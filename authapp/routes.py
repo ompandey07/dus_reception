@@ -19,7 +19,7 @@ urlpatterns = [
     # --------------------------------------------------------
     path("admin/dashboard/", views.admin_dashboard, name="admin_dashboard"),
     path("user/dashboard/", views.custom_user_dashboard, name="user_dashboard"),
-    
+    path('admin/change-password/', views.admin_change_password, name='admin_change_password'),
     # --------------------------------------------------------
     # CUSTOM USER API ROUTES
     # --------------------------------------------------------
