@@ -95,12 +95,21 @@ def calendar_view(request):
     menu_types = Booking.MENU_TYPE_CHOICES
     time_slots = Booking.TIME_SLOT_CHOICES
     
+    # Check if user is superuser (Django admin) or custom user
+    is_superuser = request.user.is_authenticated and (request.user.is_superuser or request.user.is_staff)
+    custom_user_id = request.COOKIES.get("custom_user_id")
+    is_custom_user = bool(custom_user_id)
+    can_delete = is_superuser  # Only superusers can delete
+    
     context = {
         'custom_users': custom_users,
         'today_nepali': nepali_today,
         'event_types': event_types,
         'menu_types': menu_types,
-        'time_slots': time_slots
+        'time_slots': time_slots,
+        'is_superuser': is_superuser,
+        'is_custom_user': is_custom_user,
+        'can_delete': can_delete
     }
     return render(request, 'Function/calendar.html', context)
 

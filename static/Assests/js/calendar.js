@@ -5,75 +5,77 @@ let selectedDate = null;
 let currentMonthNepaliData = null;
 
 // Initialize page on load
-window.addEventListener('load', function() {
-    setTimeout(() => {
-        document.getElementById('topBarPreloader').classList.add('hide');
-    }, 500);
-    
-    loadMonthData();
-    loadBookings();
-    
-    document.getElementById('creatorFilter').addEventListener('change', loadBookings);
-    setupModalBackdropHandlers();
+window.addEventListener("load", function () {
+  setTimeout(() => {
+    document.getElementById("topBarPreloader").classList.add("hide");
+  }, 500);
+
+  loadMonthData();
+  loadBookings();
+
+  document
+    .getElementById("creatorFilter")
+    .addEventListener("change", loadBookings);
+  setupModalBackdropHandlers();
 });
 
 // Setup modal backdrop click handlers
 function setupModalBackdropHandlers() {
-    const modals = ['addBookingModal', 'viewBookingsModal', 'editBookingModal'];
-    
-    modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    if (modalId === 'addBookingModal') closeAddModal();
-                    else if (modalId === 'viewBookingsModal') closeViewModal();
-                    else if (modalId === 'editBookingModal') closeEditModal();
-                }
-            });
+  const modals = ["addBookingModal", "viewBookingsModal", "editBookingModal"];
+
+  modals.forEach((modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal) {
+          if (modalId === "addBookingModal") closeAddModal();
+          else if (modalId === "viewBookingsModal") closeViewModal();
+          else if (modalId === "editBookingModal") closeEditModal();
         }
-    });
+      });
+    }
+  });
 }
 
 // Get CSRF Token
 function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
     }
-    return cookieValue;
+  }
+  return cookieValue;
 }
 
 // Show toast notification
-function showToast(message, type = 'error') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    
-    const config = {
-        success: { 
-            icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>', 
-            color: '#10b981', 
-            bg: 'bg-green-50' 
-        },
-        error: { 
-            icon: '<circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line>', 
-            color: '#ef4444', 
-            bg: 'bg-red-50' 
-        }
-    };
-    
-    const typeConfig = config[type] || config.error;
-    
-    toast.className = `toast ${type} relative ${typeConfig.bg} p-3 sm:p-4 shadow-lg min-w-[280px] sm:min-w-[320px]`;
-    
-    toast.innerHTML = `
+function showToast(message, type = "error") {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+
+  const config = {
+    success: {
+      icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>',
+      color: "#10b981",
+      bg: "bg-green-50",
+    },
+    error: {
+      icon: '<circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line>',
+      color: "#ef4444",
+      bg: "bg-red-50",
+    },
+  };
+
+  const typeConfig = config[type] || config.error;
+
+  toast.className = `toast ${type} relative ${typeConfig.bg} p-3 sm:p-4 shadow-lg min-w-[280px] sm:min-w-[320px]`;
+
+  toast.innerHTML = `
         <div class="flex items-start gap-2 sm:gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${typeConfig.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 mt-0.5">
                 ${typeConfig.icon}
@@ -90,219 +92,255 @@ function showToast(message, type = 'error') {
             </button>
         </div>
     `;
-    
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('hide');
-        setTimeout(() => toast.remove(), 300);
-    }, 5000);
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
 }
 
 function showPreloader() {
-    const preloader = document.getElementById('topBarPreloader');
-    preloader.classList.remove('hide');
-    preloader.style.opacity = '1';
-    preloader.style.visibility = 'visible';
+  const preloader = document.getElementById("topBarPreloader");
+  preloader.classList.remove("hide");
+  preloader.style.opacity = "1";
+  preloader.style.visibility = "visible";
 }
 
 function hidePreloader() {
-    document.getElementById('topBarPreloader').classList.add('hide');
+  document.getElementById("topBarPreloader").classList.add("hide");
 }
 
 // Get time slot display text
 function getTimeSlotDisplay(timeSlot) {
-    const slotMap = {
-        'morning': '6 AM - 3 PM',
-        'evening': '3 PM - 9 PM',
-        'fullday': 'Full Day'
-    };
-    return slotMap[timeSlot] || timeSlot;
+  const slotMap = {
+    morning: "6 AM - 3 PM",
+    evening: "3 PM - 9 PM",
+    fullday: "Full Day",
+  };
+  return slotMap[timeSlot] || timeSlot;
 }
 
 // Get time slot label for display
 function getTimeSlotLabel(timeSlot) {
-    const labelMap = {
-        'morning': '[Morning]',
-        'evening': '[Evening]',
-        'fullday': '[Full Day]'
-    };
-    return labelMap[timeSlot] || '';
+  const labelMap = {
+    morning: "[Morning]",
+    evening: "[Evening]",
+    fullday: "[Full Day]",
+  };
+  return labelMap[timeSlot] || "";
 }
 
 // Determine shift class based on time slot
 function getShiftClass(timeSlot) {
-    switch(timeSlot) {
-        case 'morning':
-            return 'shift-morning';
-        case 'evening':
-            return 'shift-evening';
-        case 'fullday':
-            return 'shift-fullday';
-        default:
-            return '';
-    }
+  switch (timeSlot) {
+    case "morning":
+      return "shift-morning";
+    case "evening":
+      return "shift-evening";
+    case "fullday":
+      return "shift-fullday";
+    default:
+      return "";
+  }
 }
 
 // Get combined shift classes for multiple bookings
 // Show full day color if: fullday time_slot OR 2 bookings on same date
 function getCombinedShiftClasses(bookings) {
-    if (bookings.length === 0) return '';
-    
-    // If 2 or more bookings, treat as full day (fully booked)
-    if (bookings.length >= 2) {
-        return 'shift-fullday';
+  if (bookings.length === 0) return "";
+
+  // If 2 or more bookings, treat as full day (fully booked)
+  if (bookings.length >= 2) {
+    return "shift-fullday";
+  }
+
+  // Single booking - check if it's fullday
+  if (bookings.length === 1) {
+    if (bookings[0].time_slot === "fullday" || bookings[0].is_full_day) {
+      return "shift-fullday";
     }
-    
-    // Single booking - check if it's fullday
-    if (bookings.length === 1) {
-        if (bookings[0].time_slot === 'fullday' || bookings[0].is_full_day) {
-            return 'shift-fullday';
-        }
-        return getShiftClass(bookings[0].time_slot);
-    }
-    
-    return '';
+    return getShiftClass(bookings[0].time_slot);
+  }
+
+  return "";
 }
 
 // Check if date is fully booked (fullday slot or 2 bookings)
 function isDateFullyBooked(bookings) {
-    if (bookings.length >= 2) return true;
-    if (bookings.length === 1 && (bookings[0].time_slot === 'fullday' || bookings[0].is_full_day)) return true;
-    return false;
+  if (bookings.length >= 2) return true;
+  if (
+    bookings.length === 1 &&
+    (bookings[0].time_slot === "fullday" || bookings[0].is_full_day)
+  )
+    return true;
+  return false;
 }
 
 // Load month data with Nepali dates from backend
 async function loadMonthData() {
-    try {
-        showPreloader();
-        
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        
-        const response = await fetch(`/api/calendar-data/?year=${year}&month=${month}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
+  try {
+    showPreloader();
 
-        if (response.ok) {
-            const data = await response.json();
-            currentMonthNepaliData = data;
-            renderCalendar();
-        } else {
-            showToast('Failed to load calendar data', 'error');
-        }
-    } catch (error) {
-        console.error('Error loading calendar data:', error);
-        showToast('Error loading calendar data', 'error');
-    } finally {
-        hidePreloader();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+
+    const response = await fetch(
+      `/api/calendar-data/?year=${year}&month=${month}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+      },
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      currentMonthNepaliData = data;
+      renderCalendar();
+    } else {
+      showToast("Failed to load calendar data", "error");
     }
+  } catch (error) {
+    console.error("Error loading calendar data:", error);
+    showToast("Error loading calendar data", "error");
+  } finally {
+    hidePreloader();
+  }
 }
 
 // Render calendar with backend Nepali dates and shift-based fill patterns
 function renderCalendar() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-    document.getElementById('currentMonth').textContent = `${monthNames[month]} ${year}`;
-    
-    if (currentMonthNepaliData && currentMonthNepaliData.calendar_days.length > 0) {
-        const firstDayData = currentMonthNepaliData.calendar_days[0];
-        if (firstDayData.nepali_date) {
-            document.getElementById('currentMonthNepali').textContent = 
-                `${firstDayData.nepali_date.month_name} ${firstDayData.nepali_date.year}`;
-        }
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  document.getElementById("currentMonth").textContent =
+    `${monthNames[month]} ${year}`;
+
+  if (
+    currentMonthNepaliData &&
+    currentMonthNepaliData.calendar_days.length > 0
+  ) {
+    const firstDayData = currentMonthNepaliData.calendar_days[0];
+    if (firstDayData.nepali_date) {
+      document.getElementById("currentMonthNepali").textContent =
+        `${firstDayData.nepali_date.month_name} ${firstDayData.nepali_date.year}`;
     }
-    
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-    
-    let calendarHTML = '';
-    
-    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    weekdays.forEach(day => {
-        calendarHTML += `<div class="calendar-header">${day}</div>`;
-    });
-    
-    let dayCount = 1;
-    let nextMonthDay = 1;
-    const totalCells = 42;
-    
-    for (let i = 0; i < totalCells; i++) {
-        let dayNum, cellDate, isCurrentMonth = false, isOtherMonth = false;
-        
-        if (i < firstDay) {
-            dayNum = daysInPrevMonth - firstDay + i + 1;
-            cellDate = new Date(year, month - 1, dayNum);
-            isOtherMonth = true;
-        } else if (dayCount <= daysInMonth) {
-            dayNum = dayCount++;
-            cellDate = new Date(year, month, dayNum);
-            isCurrentMonth = true;
-        } else {
-            dayNum = nextMonthDay++;
-            cellDate = new Date(year, month + 1, dayNum);
-            isOtherMonth = true;
-        }
-        
-        const today = new Date();
-        const isToday = cellDate.toDateString() === today.toDateString();
-        
-        const localDateStr = cellDate.getFullYear() + '-' + 
-                            String(cellDate.getMonth() + 1).padStart(2, '0') + '-' + 
-                            String(cellDate.getDate()).padStart(2, '0');
-        
-        let nepaliDateDisplay = '';
-        if (currentMonthNepaliData && currentMonthNepaliData.calendar_days) {
-            const dayData = currentMonthNepaliData.calendar_days.find(d => d.date === localDateStr);
-            if (dayData && dayData.nepali_date) {
-                nepaliDateDisplay = `${dayData.nepali_date.month_name} ${dayData.nepali_date.day}`;
-            }
-        }
-        
-        const dayBookings = allBookings.filter(b => b.booking_date === localDateStr);
-        const hasBooking = dayBookings.length > 0;
-        
-        let classes = 'calendar-day';
-        if (isOtherMonth) classes += ' other-month';
-        if (isToday) classes += ' today';
-        if (hasBooking) {
-            classes += ' has-booking';
-            // Add shift-based styling (will show fullday if 2 bookings or fullday slot)
-            const shiftClass = getCombinedShiftClasses(dayBookings);
-            if (shiftClass) classes += ' ' + shiftClass;
-        }
-        
-        // Build events HTML with color indicators
-        let eventsHTML = '';
-        if (hasBooking) {
-            dayBookings.forEach((booking, idx) => {
-                if (idx < 2) {
-                    const slotLabel = getTimeSlotLabel(booking.time_slot);
-                    const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
-                    const fullDayBadge = isFullDay ? '<span style="background: #dc2626; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">FULL DAY</span>' : '';
-                    eventsHTML += `
+  }
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  let calendarHTML = "";
+
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  weekdays.forEach((day) => {
+    calendarHTML += `<div class="calendar-header">${day}</div>`;
+  });
+
+  let dayCount = 1;
+  let nextMonthDay = 1;
+  const totalCells = 42;
+
+  for (let i = 0; i < totalCells; i++) {
+    let dayNum,
+      cellDate,
+      isCurrentMonth = false,
+      isOtherMonth = false;
+
+    if (i < firstDay) {
+      dayNum = daysInPrevMonth - firstDay + i + 1;
+      cellDate = new Date(year, month - 1, dayNum);
+      isOtherMonth = true;
+    } else if (dayCount <= daysInMonth) {
+      dayNum = dayCount++;
+      cellDate = new Date(year, month, dayNum);
+      isCurrentMonth = true;
+    } else {
+      dayNum = nextMonthDay++;
+      cellDate = new Date(year, month + 1, dayNum);
+      isOtherMonth = true;
+    }
+
+    const today = new Date();
+    const isToday = cellDate.toDateString() === today.toDateString();
+
+    const localDateStr =
+      cellDate.getFullYear() +
+      "-" +
+      String(cellDate.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(cellDate.getDate()).padStart(2, "0");
+
+    let nepaliDateDisplay = "";
+    if (currentMonthNepaliData && currentMonthNepaliData.calendar_days) {
+      const dayData = currentMonthNepaliData.calendar_days.find(
+        (d) => d.date === localDateStr,
+      );
+      if (dayData && dayData.nepali_date) {
+        nepaliDateDisplay = `${dayData.nepali_date.month_name} ${dayData.nepali_date.day}`;
+      }
+    }
+
+    const dayBookings = allBookings.filter(
+      (b) => b.booking_date === localDateStr,
+    );
+    const hasBooking = dayBookings.length > 0;
+
+    let classes = "calendar-day";
+    if (isOtherMonth) classes += " other-month";
+    if (isToday) classes += " today";
+    if (hasBooking) {
+      classes += " has-booking";
+      // Add shift-based styling (will show fullday if 2 bookings or fullday slot)
+      const shiftClass = getCombinedShiftClasses(dayBookings);
+      if (shiftClass) classes += " " + shiftClass;
+    }
+
+    // Build events HTML with color indicators
+    let eventsHTML = "";
+    if (hasBooking) {
+      dayBookings.forEach((booking, idx) => {
+        if (idx < 2) {
+          const slotLabel = getTimeSlotLabel(booking.time_slot);
+          const isFullDay =
+            booking.time_slot === "fullday" || booking.is_full_day;
+          const fullDayBadge = isFullDay
+            ? '<span style="background: #dc2626; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">FULL DAY</span>'
+            : "";
+          eventsHTML += `
                         <div class="day-event" 
                              style="border-left: 3px solid ${booking.color}; padding-left: 6px;" 
                              title="${escapeHtml(booking.client_name)} - ${booking.event_type_display} (${booking.time_slot_display || getTimeSlotDisplay(booking.time_slot)}) ${slotLabel}">
                             ${escapeHtml(booking.client_name)}${fullDayBadge}
                         </div>
                     `;
-                }
-            });
-            if (dayBookings.length > 2) {
-                eventsHTML += `<div class="day-event-more">+${dayBookings.length - 2} more</div>`;
-            }
         }
-        
-        calendarHTML += `
+      });
+      if (dayBookings.length > 2) {
+        eventsHTML += `<div class="day-event-more">+${dayBookings.length - 2} more</div>`;
+      }
+    }
+
+    calendarHTML += `
             <div class="${classes}" onclick="handleDateClick('${localDateStr}')">
                 <div class="day-number">${dayNum}</div>
                 <div class="day-nepali">${nepaliDateDisplay}</div>
@@ -311,87 +349,100 @@ function renderCalendar() {
                 </div>
             </div>
         `;
-    }
-    
-    const calendarGrid = document.querySelector('.calendar-grid');
-    if (calendarGrid) {
-        calendarGrid.innerHTML = calendarHTML;
-    }
+  }
+
+  const calendarGrid = document.querySelector(".calendar-grid");
+  if (calendarGrid) {
+    calendarGrid.innerHTML = calendarHTML;
+  }
 }
 
 function previousMonth() {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    loadMonthData();
-    loadBookings();
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  loadMonthData();
+  loadBookings();
 }
 
 function nextMonth() {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    loadMonthData();
-    loadBookings();
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  loadMonthData();
+  loadBookings();
 }
 
 async function loadBookings() {
-    try {
-        showPreloader();
-        
-        const filter = document.getElementById('creatorFilter').value;
-        const url = filter ? `/api/bookings/?created_by=${filter}` : '/api/bookings/';
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
+  try {
+    showPreloader();
 
-        if (response.ok) {
-            const data = await response.json();
-            allBookings = data.bookings || [];
-            renderCalendar();
-            renderBookingsList();
-        } else {
-            showToast('Failed to load bookings', 'error');
-        }
-    } catch (error) {
-        console.error('Error loading bookings:', error);
-        showToast('Error loading bookings', 'error');
-    } finally {
-        hidePreloader();
+    const filter = document.getElementById("creatorFilter").value;
+    const url = filter
+      ? `/api/bookings/?created_by=${filter}`
+      : "/api/bookings/";
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      allBookings = data.bookings || [];
+      renderCalendar();
+      renderBookingsList();
+    } else {
+      showToast("Failed to load bookings", "error");
     }
+  } catch (error) {
+    console.error("Error loading bookings:", error);
+    showToast("Error loading bookings", "error");
+  } finally {
+    hidePreloader();
+  }
 }
 
 function renderBookingsList() {
-    const container = document.getElementById('bookingsList');
-    const countEl = document.getElementById('bookingCount');
-    
-    const sortedBookings = [...allBookings].sort((a, b) => {
-        const dateA = new Date(a.booking_date);
-        const dateB = new Date(b.booking_date);
-        return dateA - dateB;
-    });
-    
-    const today = new Date();
-    const todayStr = today.getFullYear() + '-' + 
-                     String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(today.getDate()).padStart(2, '0');
-    const upcomingBookings = sortedBookings.filter(b => b.booking_date >= todayStr);
-    
-    countEl.textContent = upcomingBookings.length;
-    
-    if (upcomingBookings.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 py-8">No upcoming bookings</p>';
-        return;
-    }
-    
-    container.innerHTML = upcomingBookings.slice(0, 10).map(booking => {
-        const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
-        const fullDayBadge = isFullDay ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">FULL DAY</span>' : '';
-        const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
-        const slotLabel = getTimeSlotLabel(booking.time_slot);
-        
-        return `
+  const container = document.getElementById("bookingsList");
+  const countEl = document.getElementById("bookingCount");
+
+  const sortedBookings = [...allBookings].sort((a, b) => {
+    const dateA = new Date(a.booking_date);
+    const dateB = new Date(b.booking_date);
+    return dateA - dateB;
+  });
+
+  const today = new Date();
+  const todayStr =
+    today.getFullYear() +
+    "-" +
+    String(today.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(today.getDate()).padStart(2, "0");
+  const upcomingBookings = sortedBookings.filter(
+    (b) => b.booking_date >= todayStr,
+  );
+
+  countEl.textContent = upcomingBookings.length;
+
+  if (upcomingBookings.length === 0) {
+    container.innerHTML =
+      '<p class="text-center text-gray-500 py-8">No upcoming bookings</p>';
+    return;
+  }
+
+  container.innerHTML = upcomingBookings
+    .slice(0, 10)
+    .map((booking) => {
+      const isFullDay = booking.time_slot === "fullday" || booking.is_full_day;
+      const fullDayBadge = isFullDay
+        ? '<span class="text-xs bg-red-600 text-white px-2 py-1 rounded">FULL DAY</span>'
+        : "";
+      const timeSlotDisplay =
+        booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+      const slotLabel = getTimeSlotLabel(booking.time_slot);
+
+      return `
         <div class="booking-card" style="border-left: 4px solid ${booking.color}">
             <div class="booking-card-header">
                 <div class="booking-client">${escapeHtml(booking.client_name)} ${fullDayBadge}</div>
@@ -413,7 +464,9 @@ function renderBookingsList() {
                 </svg>
                 ${escapeHtml(booking.event_type_display)}
             </div>
-            ${booking.menu_type_display ? `
+            ${
+              booking.menu_type_display
+                ? `
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
@@ -422,8 +475,12 @@ function renderBookingsList() {
                 </svg>
                 ${escapeHtml(booking.menu_type_display)}
             </div>
-            ` : ''}
-            ${booking.no_of_pax ? `
+            `
+                : ""
+            }
+            ${
+              booking.no_of_pax
+                ? `
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -431,10 +488,14 @@ function renderBookingsList() {
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
-                Pax: ${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}
+                Pax: ${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ""}
             </div>
-            ` : ''}
-            ${booking.rate ? `
+            `
+                : ""
+            }
+            ${
+              booking.rate
+                ? `
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" x2="12" y1="2" y2="22"></line>
@@ -442,7 +503,9 @@ function renderBookingsList() {
                 </svg>
                 Rate: Rs. ${booking.rate}
             </div>
-            ` : ''}
+            `
+                : ""
+            }
             <div class="booking-detail">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
@@ -470,64 +533,78 @@ function renderBookingsList() {
                     </svg>
                     Edit
                 </button>
-                <button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete">
+                ${
+                  userCanDelete
+                    ? `<button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                         <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                     </svg>
                     Delete
-                </button>
+                </button>`
+                    : ""
+                }
             </div>
         </div>
-    `;}).join('');
+    `;
+    })
+    .join("");
 }
 
 async function viewBookingDetail(bookingId) {
-    try {
-        showPreloader();
-        
-        const response = await fetch(`/api/bookings/${bookingId}/detail/`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
+  try {
+    showPreloader();
 
-        if (response.ok) {
-            const data = await response.json();
-            const booking = data.booking;
-            selectedDate = booking.booking_date;
-            const dayBookings = allBookings.filter(b => b.booking_date === selectedDate);
-            const fullyBooked = isDateFullyBooked(dayBookings);
-            openDetailModal(booking);
-            // Hide add button if fully booked (2 bookings or fullday)
-            document.getElementById('addInViewButton').style.display = fullyBooked ? 'none' : 'block';
-        } else {
-            showToast('Failed to load booking details', 'error');
-        }
-    } catch (error) {
-        console.error('Error loading booking detail:', error);
-        showToast('Error loading booking details', 'error');
-    } finally {
-        hidePreloader();
+    const response = await fetch(`/api/bookings/${bookingId}/detail/`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const booking = data.booking;
+      selectedDate = booking.booking_date;
+      const dayBookings = allBookings.filter(
+        (b) => b.booking_date === selectedDate,
+      );
+      const fullyBooked = isDateFullyBooked(dayBookings);
+      openDetailModal(booking);
+      // Hide add button if fully booked (2 bookings or fullday)
+      document.getElementById("addInViewButton").style.display = fullyBooked
+        ? "none"
+        : "block";
+    } else {
+      showToast("Failed to load booking details", "error");
     }
+  } catch (error) {
+    console.error("Error loading booking detail:", error);
+    showToast("Error loading booking details", "error");
+  } finally {
+    hidePreloader();
+  }
 }
 
 function openDetailModal(booking) {
-    const modal = document.getElementById('viewBookingsModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    document.getElementById('selectedDateDisplay').textContent = `${booking.booking_date_formatted} (${booking.booking_date_nepali})`;
-    
-    const container = document.getElementById('dateBookingsList');
-    const slotLabel = getTimeSlotLabel(booking.time_slot);
-    const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
-    const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
-    const fullDayBadge = isFullDay ? '<span class="bg-red-600 text-white text-xs px-3 py-1 rounded font-bold">FULL DAY BOOKING</span>' : '';
-    
-    container.innerHTML = `
+  const modal = document.getElementById("viewBookingsModal");
+  const modalContent = modal.querySelector(".modal-content");
+
+  document.getElementById("selectedDateDisplay").textContent =
+    `${booking.booking_date_formatted} (${booking.booking_date_nepali})`;
+
+  const container = document.getElementById("dateBookingsList");
+  const slotLabel = getTimeSlotLabel(booking.time_slot);
+  const timeSlotDisplay =
+    booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+  const isFullDay = booking.time_slot === "fullday" || booking.is_full_day;
+  const fullDayBadge = isFullDay
+    ? '<span class="bg-red-600 text-white text-xs px-3 py-1 rounded font-bold">FULL DAY BOOKING</span>'
+    : "";
+
+  container.innerHTML = `
         <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-6">
                 <div>
@@ -560,36 +637,56 @@ function openDetailModal(booking) {
                     <p class="detail-label">Phone Number</p>
                     <p class="detail-value">${escapeHtml(booking.phone_number)}</p>
                 </div>
-                ${booking.email ? `
+                ${
+                  booking.email
+                    ? `
                 <div class="detail-item">
                     <p class="detail-label">Email</p>
                     <p class="detail-value">${escapeHtml(booking.email)}</p>
                 </div>
-                ` : ''}
-                ${booking.menu_type_display ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.menu_type_display
+                    ? `
                 <div class="detail-item">
                     <p class="detail-label">Menu Type</p>
                     <p class="detail-value">${escapeHtml(booking.menu_type_display)}</p>
                 </div>
-                ` : ''}
-                ${booking.no_of_pax ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.no_of_pax
+                    ? `
                 <div class="detail-item">
                     <p class="detail-label">No. of Pax</p>
                     <p class="detail-value">${escapeHtml(booking.no_of_pax)}</p>
                 </div>
-                ` : ''}
-                ${booking.additional_pax ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.additional_pax
+                    ? `
                 <div class="detail-item">
                     <p class="detail-label">Additional Pax</p>
                     <p class="detail-value">${escapeHtml(booking.additional_pax)}</p>
                 </div>
-                ` : ''}
-                ${booking.rate ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.rate
+                    ? `
                 <div class="detail-item">
                     <p class="detail-label">Rate</p>
                     <p class="detail-value font-bold">Rs. ${booking.rate}</p>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 <div class="detail-item">
                     <p class="detail-label">Advance Given</p>
                     <p class="detail-value font-bold">Rs. ${booking.advance_given}</p>
@@ -611,60 +708,69 @@ function openDetailModal(booking) {
                     </svg>
                     Edit Booking
                 </button>
-                <button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete flex-1">
+                ${
+                  userCanDelete
+                    ? `<button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete flex-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                         <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                     </svg>
                     Delete Booking
-                </button>
+                </button>`
+                    : ""
+                }
             </div>
         </div>
     `;
-    
-    modal.classList.remove('hidden', 'closing');
-    modal.classList.add('flex');
-    modalContent.classList.remove('closing');
-    setTimeout(() => {
-        modal.style.display = 'flex';
-    }, 10);
+
+  modal.classList.remove("hidden", "closing");
+  modal.classList.add("flex");
+  modalContent.classList.remove("closing");
+  setTimeout(() => {
+    modal.style.display = "flex";
+  }, 10);
 }
 
 function handleDateClick(dateStr) {
-    selectedDate = dateStr;
-    const bookings = allBookings.filter(b => b.booking_date === dateStr);
-    const fullyBooked = isDateFullyBooked(bookings);
-    
-    if (bookings.length === 0) {
-        openAddModal(dateStr);
-    } else if (bookings.length === 1 && !fullyBooked) {
-        // Single booking that's not fullday - can view and potentially add more
-        viewBookingDetail(bookings[0].id);
-    } else if (bookings.length === 1 && fullyBooked) {
-        // Single fullday booking - just view
-        viewBookingDetail(bookings[0].id);
-    } else {
-        // Multiple bookings - show all
-        openDateBookingsModal(dateStr, bookings);
-    }
+  selectedDate = dateStr;
+  const bookings = allBookings.filter((b) => b.booking_date === dateStr);
+  const fullyBooked = isDateFullyBooked(bookings);
+
+  if (bookings.length === 0) {
+    openAddModal(dateStr);
+  } else if (bookings.length === 1 && !fullyBooked) {
+    // Single booking that's not fullday - can view and potentially add more
+    viewBookingDetail(bookings[0].id);
+  } else if (bookings.length === 1 && fullyBooked) {
+    // Single fullday booking - just view
+    viewBookingDetail(bookings[0].id);
+  } else {
+    // Multiple bookings - show all
+    openDateBookingsModal(dateStr, bookings);
+  }
 }
 
 function openDateBookingsModal(dateStr, bookings) {
-    const modal = document.getElementById('viewBookingsModal');
-    const modalContent = modal.querySelector('.modal-content');
-    const fullyBooked = isDateFullyBooked(bookings);
-    
-    document.getElementById('selectedDateDisplay').textContent = `${formatDate(dateStr)} - ${bookings.length} Bookings`;
-    
-    const container = document.getElementById('dateBookingsList');
-    container.innerHTML = bookings.map(booking => {
-        const slotLabel = getTimeSlotLabel(booking.time_slot);
-        const timeSlotDisplay = booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
-        const isFullDay = booking.time_slot === 'fullday' || booking.is_full_day;
-        const fullDayBadge = isFullDay ? '<span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold ml-2">FULL DAY</span>' : '';
-        
-        return `
+  const modal = document.getElementById("viewBookingsModal");
+  const modalContent = modal.querySelector(".modal-content");
+  const fullyBooked = isDateFullyBooked(bookings);
+
+  document.getElementById("selectedDateDisplay").textContent =
+    `${formatDate(dateStr)} - ${bookings.length} Bookings`;
+
+  const container = document.getElementById("dateBookingsList");
+  container.innerHTML = bookings
+    .map((booking) => {
+      const slotLabel = getTimeSlotLabel(booking.time_slot);
+      const timeSlotDisplay =
+        booking.time_slot_display || getTimeSlotDisplay(booking.time_slot);
+      const isFullDay = booking.time_slot === "fullday" || booking.is_full_day;
+      const fullDayBadge = isFullDay
+        ? '<span class="bg-red-600 text-white text-xs px-2 py-1 rounded font-bold ml-2">FULL DAY</span>'
+        : "";
+
+      return `
         <div class="bg-gray-50 p-4 border-l-4" style="border-color: ${booking.color}">
             <div class="flex justify-between items-start mb-3">
                 <div>
@@ -682,30 +788,46 @@ function openDateBookingsModal(dateStr, bookings) {
                     <p class="text-gray-600">Phone:</p>
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.phone_number)}</p>
                 </div>
-                ${booking.email ? `
+                ${
+                  booking.email
+                    ? `
                 <div>
                     <p class="text-gray-600">Email:</p>
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.email)}</p>
                 </div>
-                ` : ''}
-                ${booking.menu_type_display ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.menu_type_display
+                    ? `
                 <div>
                     <p class="text-gray-600">Menu Type:</p>
                     <p class="font-semibold text-gray-800">${escapeHtml(booking.menu_type_display)}</p>
                 </div>
-                ` : ''}
-                ${booking.no_of_pax ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.no_of_pax
+                    ? `
                 <div>
                     <p class="text-gray-600">No. of Pax:</p>
-                    <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ''}</p>
+                    <p class="font-semibold text-gray-800">${escapeHtml(booking.no_of_pax)}${booking.additional_pax ? ` (+${escapeHtml(booking.additional_pax)})` : ""}</p>
                 </div>
-                ` : ''}
-                ${booking.rate ? `
+                `
+                    : ""
+                }
+                ${
+                  booking.rate
+                    ? `
                 <div>
                     <p class="text-gray-600">Rate:</p>
                     <p class="font-semibold text-gray-800">Rs. ${booking.rate}</p>
                 </div>
-                ` : ''}
+                `
+                    : ""
+                }
                 <div>
                     <p class="text-gray-600">Advance Given:</p>
                     <p class="font-semibold text-gray-800">Rs. ${booking.advance_given}</p>
@@ -730,410 +852,450 @@ function openDateBookingsModal(dateStr, bookings) {
                     </svg>
                     Edit
                 </button>
-                <button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete">
+                ${
+                  userCanDelete
+                    ? `<button onclick="deleteBooking(${booking.id}, '${escapeHtml(booking.client_name)}')" class="btn-delete">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                         <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                     </svg>
                     Delete
-                </button>
+                </button>`
+                    : ""
+                }
             </div>
         </div>
-    `;}).join('');
-    
-    // Hide add button if fully booked
-    document.getElementById('addInViewButton').style.display = fullyBooked ? 'none' : 'block';
-    
-    modal.classList.remove('hidden', 'closing');
-    modal.classList.add('flex');
-    modalContent.classList.remove('closing');
-    setTimeout(() => {
-        modal.style.display = 'flex';
-    }, 10);
+    `;
+    })
+    .join("");
+
+  // Hide add button if fully booked
+  document.getElementById("addInViewButton").style.display = fullyBooked
+    ? "none"
+    : "block";
+
+  modal.classList.remove("hidden", "closing");
+  modal.classList.add("flex");
+  modalContent.classList.remove("closing");
+  setTimeout(() => {
+    modal.style.display = "flex";
+  }, 10);
 }
 
 function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric'
-    });
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function openAddModal(dateStr = null) {
-    closeViewModal();
-    closeEditModal();
+  closeViewModal();
+  closeEditModal();
 
-    const modal = document.getElementById('addBookingModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    const now = new Date();
-    const today = now.getFullYear() + '-' + 
-                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                  String(now.getDate()).padStart(2, '0');
-    
-    document.getElementById('bookingDate').value = dateStr || today;
-    document.getElementById('timeSlot').value = 'morning';
-    
-    // Reset all fields
-    document.getElementById('clientName').value = '';
-    document.getElementById('phoneNumber').value = '';
-    document.getElementById('email').value = '';
-    document.getElementById('eventType').value = '';
-    document.getElementById('menuType').value = '';
-    document.getElementById('noOfPax').value = '';
-    document.getElementById('additionalPax').value = '';
-    document.getElementById('rate').value = '';
-    document.getElementById('advanceGiven').value = '';
-    
-    modal.classList.remove('hidden', 'closing');
-    modal.classList.add('flex');
-    modalContent.classList.remove('closing');
-    setTimeout(() => {
-        modal.style.display = 'flex';
-    }, 10);
+  const modal = document.getElementById("addBookingModal");
+  const modalContent = modal.querySelector(".modal-content");
+
+  const now = new Date();
+  const today =
+    now.getFullYear() +
+    "-" +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(now.getDate()).padStart(2, "0");
+
+  document.getElementById("bookingDate").value = dateStr || today;
+  document.getElementById("timeSlot").value = "morning";
+
+  // Reset all fields
+  document.getElementById("clientName").value = "";
+  document.getElementById("phoneNumber").value = "";
+  document.getElementById("email").value = "";
+  document.getElementById("eventType").value = "";
+  document.getElementById("menuType").value = "";
+  document.getElementById("noOfPax").value = "";
+  document.getElementById("additionalPax").value = "";
+  document.getElementById("rate").value = "";
+  document.getElementById("advanceGiven").value = "";
+
+  modal.classList.remove("hidden", "closing");
+  modal.classList.add("flex");
+  modalContent.classList.remove("closing");
+  setTimeout(() => {
+    modal.style.display = "flex";
+  }, 10);
 }
 
 function closeAddModal() {
-    const modal = document.getElementById('addBookingModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    modal.classList.add('closing');
-    modalContent.classList.add('closing');
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex', 'closing');
-        modal.style.display = 'none';
-        modalContent.classList.remove('closing');
-        document.getElementById('addBookingForm').reset();
-    }, 200);
+  const modal = document.getElementById("addBookingModal");
+  const modalContent = modal.querySelector(".modal-content");
+
+  modal.classList.add("closing");
+  modalContent.classList.add("closing");
+
+  setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex", "closing");
+    modal.style.display = "none";
+    modalContent.classList.remove("closing");
+    document.getElementById("addBookingForm").reset();
+  }, 200);
 }
 
 function closeViewModal() {
-    const modal = document.getElementById('viewBookingsModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    modal.classList.add('closing');
-    modalContent.classList.add('closing');
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex', 'closing');
-        modal.style.display = 'none';
-        modalContent.classList.remove('closing');
-    }, 200);
+  const modal = document.getElementById("viewBookingsModal");
+  const modalContent = modal.querySelector(".modal-content");
+
+  modal.classList.add("closing");
+  modalContent.classList.add("closing");
+
+  setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex", "closing");
+    modal.style.display = "none";
+    modalContent.classList.remove("closing");
+  }, 200);
 }
 
 function closeEditModal() {
-    const modal = document.getElementById('editBookingModal');
-    const modalContent = modal.querySelector('.modal-content');
-    
-    modal.classList.add('closing');
-    modalContent.classList.add('closing');
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex', 'closing');
-        modal.style.display = 'none';
-        modalContent.classList.remove('closing');
-        document.getElementById('editBookingForm').reset();
-    }, 200);
+  const modal = document.getElementById("editBookingModal");
+  const modalContent = modal.querySelector(".modal-content");
+
+  modal.classList.add("closing");
+  modalContent.classList.add("closing");
+
+  setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex", "closing");
+    modal.style.display = "none";
+    modalContent.classList.remove("closing");
+    document.getElementById("editBookingForm").reset();
+  }, 200);
 }
 
 async function editBooking(bookingId) {
-    const booking = allBookings.find(b => b.id === bookingId);
-    if (!booking) return;
-    
-    selectedDate = booking.booking_date;
-    closeViewModal();
-    
+  const booking = allBookings.find((b) => b.id === bookingId);
+  if (!booking) return;
+
+  selectedDate = booking.booking_date;
+  closeViewModal();
+
+  setTimeout(() => {
+    document.getElementById("editBookingId").value = booking.id;
+    document.getElementById("editClientName").value = booking.client_name;
+    document.getElementById("editBookingDate").value = booking.booking_date;
+    document.getElementById("editTimeSlot").value = booking.time_slot;
+    document.getElementById("editPhoneNumber").value = booking.phone_number;
+    document.getElementById("editEmail").value = booking.email || "";
+    document.getElementById("editEventType").value = booking.event_type;
+    document.getElementById("editMenuType").value = booking.menu_type || "";
+    document.getElementById("editNoOfPax").value = booking.no_of_pax || "";
+    document.getElementById("editAdditionalPax").value =
+      booking.additional_pax || "";
+    document.getElementById("editRate").value = booking.rate || "";
+    document.getElementById("editAdvanceGiven").value = booking.advance_given;
+
+    const modal = document.getElementById("editBookingModal");
+    const modalContent = modal.querySelector(".modal-content");
+
+    modal.classList.remove("hidden", "closing");
+    modal.classList.add("flex");
+    modalContent.classList.remove("closing");
     setTimeout(() => {
-        document.getElementById('editBookingId').value = booking.id;
-        document.getElementById('editClientName').value = booking.client_name;
-        document.getElementById('editBookingDate').value = booking.booking_date;
-        document.getElementById('editTimeSlot').value = booking.time_slot;
-        document.getElementById('editPhoneNumber').value = booking.phone_number;
-        document.getElementById('editEmail').value = booking.email || '';
-        document.getElementById('editEventType').value = booking.event_type;
-        document.getElementById('editMenuType').value = booking.menu_type || '';
-        document.getElementById('editNoOfPax').value = booking.no_of_pax || '';
-        document.getElementById('editAdditionalPax').value = booking.additional_pax || '';
-        document.getElementById('editRate').value = booking.rate || '';
-        document.getElementById('editAdvanceGiven').value = booking.advance_given;
-        
-        const modal = document.getElementById('editBookingModal');
-        const modalContent = modal.querySelector('.modal-content');
-        
-        modal.classList.remove('hidden', 'closing');
-        modal.classList.add('flex');
-        modalContent.classList.remove('closing');
-        setTimeout(() => {
-            modal.style.display = 'flex';
-        }, 10);
-    }, 250);
+      modal.style.display = "flex";
+    }, 10);
+  }, 250);
 }
 
 async function deleteBooking(bookingId, clientName) {
-    if (!confirm(`Are you sure you want to delete booking for "${clientName}"?`)) {
-        return;
-    }
+  if (
+    !confirm(`Are you sure you want to delete booking for "${clientName}"?`)
+  ) {
+    return;
+  }
 
-    try {
-        showPreloader();
-        const response = await fetch(`/api/bookings/${bookingId}/delete/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
+  try {
+    showPreloader();
+    const response = await fetch(`/api/bookings/${bookingId}/delete/`, {
+      method: "DELETE",
+      headers: {
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+    });
 
-        if (response.ok) {
-            showToast('Booking deleted successfully', 'success');
-            closeViewModal();
-            loadBookings();
-        } else {
-            const data = await response.json();
-            showToast(data.error || 'Failed to delete booking', 'error');
-        }
-    } catch (error) {
-        console.error('Error deleting booking:', error);
-        showToast('Error deleting booking', 'error');
-    } finally {
-        hidePreloader();
+    if (response.ok) {
+      showToast("Booking deleted successfully", "success");
+      closeViewModal();
+      loadBookings();
+    } else {
+      const data = await response.json();
+      showToast(data.error || "Failed to delete booking", "error");
     }
+  } catch (error) {
+    console.error("Error deleting booking:", error);
+    showToast("Error deleting booking", "error");
+  } finally {
+    hidePreloader();
+  }
 }
 
 // Add Booking Form Submit
-document.getElementById('addBookingForm').addEventListener('submit', async function(event) {
+document
+  .getElementById("addBookingForm")
+  .addEventListener("submit", async function (event) {
     event.preventDefault();
-    
-    const clientName = document.getElementById('clientName').value.trim();
-    const bookingDate = document.getElementById('bookingDate').value;
-    const timeSlot = document.getElementById('timeSlot').value;
-    const phoneNumber = document.getElementById('phoneNumber').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const eventType = document.getElementById('eventType').value;
-    const menuType = document.getElementById('menuType').value;
-    const noOfPax = document.getElementById('noOfPax').value.trim();
-    const additionalPax = document.getElementById('additionalPax').value.trim();
-    const rate = document.getElementById('rate').value.trim();
-    const advanceGiven = document.getElementById('advanceGiven').value;
-    
-    if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
-        showToast('Please fill all required fields', 'error');
-        return;
+
+    const clientName = document.getElementById("clientName").value.trim();
+    const bookingDate = document.getElementById("bookingDate").value;
+    const timeSlot = document.getElementById("timeSlot").value;
+    const phoneNumber = document.getElementById("phoneNumber").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const eventType = document.getElementById("eventType").value;
+    const menuType = document.getElementById("menuType").value;
+    const noOfPax = document.getElementById("noOfPax").value.trim();
+    const additionalPax = document.getElementById("additionalPax").value.trim();
+    const rate = document.getElementById("rate").value.trim();
+    const advanceGiven = document.getElementById("advanceGiven").value;
+
+    if (
+      !clientName ||
+      !bookingDate ||
+      !timeSlot ||
+      !phoneNumber ||
+      !eventType
+    ) {
+      showToast("Please fill all required fields", "error");
+      return;
     }
-    
+
     // Validate advance given is not empty and is a valid number
-    if (!advanceGiven || advanceGiven === '' || isNaN(parseFloat(advanceGiven))) {
-        showToast('Please enter a valid advance amount', 'error');
-        document.getElementById('advanceGiven').focus();
-        return;
+    if (
+      !advanceGiven ||
+      advanceGiven === "" ||
+      isNaN(parseFloat(advanceGiven))
+    ) {
+      showToast("Please enter a valid advance amount", "error");
+      document.getElementById("advanceGiven").focus();
+      return;
     }
-    
+
     if (parseFloat(advanceGiven) < 0) {
-        showToast('Advance amount cannot be negative', 'error');
-        document.getElementById('advanceGiven').focus();
-        return;
+      showToast("Advance amount cannot be negative", "error");
+      document.getElementById("advanceGiven").focus();
+      return;
     }
-    
+
     // Validate rate if provided
-    if (rate && rate !== '') {
-        if (isNaN(parseFloat(rate))) {
-            showToast('Please enter a valid rate amount', 'error');
-            document.getElementById('rate').focus();
-            return;
-        }
-        if (parseFloat(rate) < 0) {
-            showToast('Rate cannot be negative', 'error');
-            document.getElementById('rate').focus();
-            return;
-        }
+    if (rate && rate !== "") {
+      if (isNaN(parseFloat(rate))) {
+        showToast("Please enter a valid rate amount", "error");
+        document.getElementById("rate").focus();
+        return;
+      }
+      if (parseFloat(rate) < 0) {
+        showToast("Rate cannot be negative", "error");
+        document.getElementById("rate").focus();
+        return;
+      }
     }
-    
+
     const button = event.target.querySelector('button[type="submit"]');
-    const buttonText = document.getElementById('addButtonText');
-    const buttonIcon = document.getElementById('addButtonIcon');
-    
+    const buttonText = document.getElementById("addButtonText");
+    const buttonIcon = document.getElementById("addButtonIcon");
+
     showPreloader();
     button.disabled = true;
-    button.classList.add('opacity-75');
+    button.classList.add("opacity-75");
     buttonIcon.innerHTML = `<div class="spinner-dots"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>`;
-    buttonText.textContent = 'Creating...';
-    
-    try {
-        const response = await fetch('/api/bookings/create/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                client_name: clientName,
-                booking_date: bookingDate,
-                time_slot: timeSlot,
-                phone_number: phoneNumber,
-                email: email,
-                event_type: eventType,
-                menu_type: menuType,
-                no_of_pax: noOfPax,
-                additional_pax: additionalPax,
-                rate: rate,
-                advance_given: advanceGiven
-            })
-        });
+    buttonText.textContent = "Creating...";
 
-        const data = await response.json();
-        
-        if (response.ok) {
-            hidePreloader();
-            showToast('Booking created successfully!', 'success');
-            closeAddModal();
-            loadBookings();
-        } else {
-            hidePreloader();
-            showToast(data.error || 'Failed to create booking', 'error');
-        }
-    } catch (error) {
+    try {
+      const response = await fetch("/api/bookings/create/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({
+          client_name: clientName,
+          booking_date: bookingDate,
+          time_slot: timeSlot,
+          phone_number: phoneNumber,
+          email: email,
+          event_type: eventType,
+          menu_type: menuType,
+          no_of_pax: noOfPax,
+          additional_pax: additionalPax,
+          rate: rate,
+          advance_given: advanceGiven,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
         hidePreloader();
-        console.error('Error:', error);
-        showToast('An error occurred. Please try again.', 'error');
+        showToast("Booking created successfully!", "success");
+        closeAddModal();
+        loadBookings();
+      } else {
+        hidePreloader();
+        showToast(data.error || "Failed to create booking", "error");
+      }
+    } catch (error) {
+      hidePreloader();
+      console.error("Error:", error);
+      showToast("An error occurred. Please try again.", "error");
     } finally {
-        button.disabled = false;
-        button.classList.remove('opacity-75');
-        buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>`;
-        buttonText.textContent = 'Create Booking';
+      button.disabled = false;
+      button.classList.remove("opacity-75");
+      buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>`;
+      buttonText.textContent = "Create Booking";
     }
-});
+  });
 
 // Edit Booking Form Submit
-document.getElementById('editBookingForm').addEventListener('submit', async function(event) {
+document
+  .getElementById("editBookingForm")
+  .addEventListener("submit", async function (event) {
     event.preventDefault();
-    
-    const bookingId = document.getElementById('editBookingId').value;
-    const clientName = document.getElementById('editClientName').value.trim();
-    const bookingDate = document.getElementById('editBookingDate').value;
-    const timeSlot = document.getElementById('editTimeSlot').value;
-    const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
-    const email = document.getElementById('editEmail').value.trim();
-    const eventType = document.getElementById('editEventType').value;
-    const menuType = document.getElementById('editMenuType').value;
-    const noOfPax = document.getElementById('editNoOfPax').value.trim();
-    const additionalPax = document.getElementById('editAdditionalPax').value.trim();
-    const rate = document.getElementById('editRate').value.trim();
-    const advanceGiven = document.getElementById('editAdvanceGiven').value;
-    
-    if (!clientName || !bookingDate || !timeSlot || !phoneNumber || !eventType) {
-        showToast('Please fill all required fields', 'error');
-        return;
+
+    const bookingId = document.getElementById("editBookingId").value;
+    const clientName = document.getElementById("editClientName").value.trim();
+    const bookingDate = document.getElementById("editBookingDate").value;
+    const timeSlot = document.getElementById("editTimeSlot").value;
+    const phoneNumber = document.getElementById("editPhoneNumber").value.trim();
+    const email = document.getElementById("editEmail").value.trim();
+    const eventType = document.getElementById("editEventType").value;
+    const menuType = document.getElementById("editMenuType").value;
+    const noOfPax = document.getElementById("editNoOfPax").value.trim();
+    const additionalPax = document
+      .getElementById("editAdditionalPax")
+      .value.trim();
+    const rate = document.getElementById("editRate").value.trim();
+    const advanceGiven = document.getElementById("editAdvanceGiven").value;
+
+    if (
+      !clientName ||
+      !bookingDate ||
+      !timeSlot ||
+      !phoneNumber ||
+      !eventType
+    ) {
+      showToast("Please fill all required fields", "error");
+      return;
     }
-    
+
     // Validate advance given
-    if (!advanceGiven || advanceGiven === '' || isNaN(parseFloat(advanceGiven))) {
-        showToast('Please enter a valid advance amount', 'error');
-        document.getElementById('editAdvanceGiven').focus();
-        return;
+    if (
+      !advanceGiven ||
+      advanceGiven === "" ||
+      isNaN(parseFloat(advanceGiven))
+    ) {
+      showToast("Please enter a valid advance amount", "error");
+      document.getElementById("editAdvanceGiven").focus();
+      return;
     }
-    
+
     if (parseFloat(advanceGiven) < 0) {
-        showToast('Advance amount cannot be negative', 'error');
-        document.getElementById('editAdvanceGiven').focus();
-        return;
+      showToast("Advance amount cannot be negative", "error");
+      document.getElementById("editAdvanceGiven").focus();
+      return;
     }
-    
+
     // Validate rate if provided
-    if (rate && rate !== '') {
-        if (isNaN(parseFloat(rate))) {
-            showToast('Please enter a valid rate amount', 'error');
-            document.getElementById('editRate').focus();
-            return;
-        }
-        if (parseFloat(rate) < 0) {
-            showToast('Rate cannot be negative', 'error');
-            document.getElementById('editRate').focus();
-            return;
-        }
+    if (rate && rate !== "") {
+      if (isNaN(parseFloat(rate))) {
+        showToast("Please enter a valid rate amount", "error");
+        document.getElementById("editRate").focus();
+        return;
+      }
+      if (parseFloat(rate) < 0) {
+        showToast("Rate cannot be negative", "error");
+        document.getElementById("editRate").focus();
+        return;
+      }
     }
-    
+
     const button = event.target.querySelector('button[type="submit"]');
-    const buttonText = document.getElementById('editButtonText');
-    const buttonIcon = document.getElementById('editButtonIcon');
-    
+    const buttonText = document.getElementById("editButtonText");
+    const buttonIcon = document.getElementById("editButtonIcon");
+
     showPreloader();
     button.disabled = true;
-    button.classList.add('opacity-75');
+    button.classList.add("opacity-75");
     buttonIcon.innerHTML = `<div class="spinner-dots"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>`;
-    buttonText.textContent = 'Updating...';
-    
-    try {
-        const response = await fetch(`/api/bookings/${bookingId}/update/`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                client_name: clientName,
-                booking_date: bookingDate,
-                time_slot: timeSlot,
-                phone_number: phoneNumber,
-                email: email,
-                event_type: eventType,
-                menu_type: menuType,
-                no_of_pax: noOfPax,
-                additional_pax: additionalPax,
-                rate: rate,
-                advance_given: advanceGiven
-            })
-        });
+    buttonText.textContent = "Updating...";
 
-        const data = await response.json();
-        
-        if (response.ok) {
-            hidePreloader();
-            showToast('Booking updated successfully!', 'success');
-            closeEditModal();
-            loadBookings();
-        } else {
-            hidePreloader();
-            showToast(data.error || 'Failed to update booking', 'error');
-        }
-    } catch (error) {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/update/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({
+          client_name: clientName,
+          booking_date: bookingDate,
+          time_slot: timeSlot,
+          phone_number: phoneNumber,
+          email: email,
+          event_type: eventType,
+          menu_type: menuType,
+          no_of_pax: noOfPax,
+          additional_pax: additionalPax,
+          rate: rate,
+          advance_given: advanceGiven,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
         hidePreloader();
-        console.error('Error:', error);
-        showToast('An error occurred. Please try again.', 'error');
+        showToast("Booking updated successfully!", "success");
+        closeEditModal();
+        loadBookings();
+      } else {
+        hidePreloader();
+        showToast(data.error || "Failed to update booking", "error");
+      }
+    } catch (error) {
+      hidePreloader();
+      console.error("Error:", error);
+      showToast("An error occurred. Please try again.", "error");
     } finally {
-        button.disabled = false;
-        button.classList.remove('opacity-75');
-        buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
-        buttonText.textContent = 'Update Booking';
+      button.disabled = false;
+      button.classList.remove("opacity-75");
+      buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+      buttonText.textContent = "Update Booking";
     }
-});
+  });
 
 // Initialize floating add button
-document.addEventListener('DOMContentLoaded', function() {
-    const existingBtn = document.querySelector('.add-booking-btn');
-    if (!existingBtn) {
-        const floatingBtn = document.createElement('div');
-        floatingBtn.className = 'add-booking-btn';
-        floatingBtn.innerHTML = `
+document.addEventListener("DOMContentLoaded", function () {
+  const existingBtn = document.querySelector(".add-booking-btn");
+  if (!existingBtn) {
+    const floatingBtn = document.createElement("div");
+    floatingBtn.className = "add-booking-btn";
+    floatingBtn.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" x2="12" y1="5" y2="19"></line>
                 <line x1="5" x2="19" y1="12" y2="12"></line>
             </svg>
         `;
-        floatingBtn.onclick = () => openAddModal();
-        document.body.appendChild(floatingBtn);
-    }
+    floatingBtn.onclick = () => openAddModal();
+    document.body.appendChild(floatingBtn);
+  }
 });
