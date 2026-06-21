@@ -8,7 +8,7 @@ from django.views import View
 from django.db.models import Q
 from datetime import datetime, date, timedelta
 import json
-import nepali_datetime
+from managementapp.hamro_scraper import get_bs_data_for_ad_date
 from authapp.decorators import login_required_dual
 from authapp.models import CustomUser
 from .models import Booking, ActivityLog
@@ -54,16 +54,19 @@ def log_activity(action, entity_type, entity_id=None, entity_name='', descriptio
 # NEPALI DATE HELPER
 # ============================================================
 def get_nepali_date(english_date):
-    """Convert English date to Nepali date"""
+    """Convert English date to accurate Nepali date using real-time scraper"""
     try:
-        nepali_date = nepali_datetime.date.from_datetime_date(english_date)
+        en_str = f"{english_date.year}-{english_date.month}-{english_date.day}"
+        en_data = get_bs_data_for_ad_date(en_str)
+        if not en_data:
+            return None
         return {
-            'year': nepali_date.year,
-            'month': nepali_date.month,
-            'day': nepali_date.day,
-            'month_name': nepali_date.strftime('%B'),
-            'formatted': nepali_date.strftime('%Y-%m-%d'),
-            'formatted_nepali': nepali_date.strftime('%Y %B %d')
+            'year': en_data['year'],
+            'month': en_data['month'],
+            'day': en_data['day'],
+            'month_name': en_data['str_month'],
+            'formatted': f"{en_data['year']}-{str(en_data['month']).zfill(2)}-{str(en_data['day']).zfill(2)}",
+            'formatted_nepali': f"{en_data['year']} {en_data['str_month']} {en_data['day']}"
         }
     except Exception as e:
         print(f"Error converting date: {e}")
