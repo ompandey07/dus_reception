@@ -8,7 +8,7 @@ from django.views import View
 from django.db.models import Q
 from datetime import datetime, date, timedelta
 import json
-from managementapp.hamro_scraper import get_bs_data_for_ad_date
+from managementapp.nepali_converter import get_bs_data_for_ad_date
 from authapp.decorators import login_required_dual
 from authapp.models import CustomUser
 from .models import Booking, ActivityLog
@@ -54,7 +54,7 @@ def log_activity(action, entity_type, entity_id=None, entity_name='', descriptio
 # NEPALI DATE HELPER
 # ============================================================
 def get_nepali_date(english_date):
-    """Convert English date to accurate Nepali date using real-time scraper"""
+    """Convert English date to accurate Nepali date using robust mathematical offline converter"""
     try:
         en_str = f"{english_date.year}-{english_date.month}-{english_date.day}"
         en_data = get_bs_data_for_ad_date(en_str)
